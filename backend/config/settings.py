@@ -82,8 +82,8 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     # Local Apps
-    "fcalerts.apps.users",
-    "fcalerts.apps.core",
+    # "fcalerts.apps.users",
+    # "fcalerts.apps.core",
 ]
 
 MIDDLEWARE = [
@@ -95,6 +95,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -127,8 +128,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": CONFIG["DB_NAME"],
+        "USER": CONFIG["DB_USER"],
+        "PASSWORD": CONFIG["DB_PASSWORD"],
+        "HOST": CONFIG["DB_HOST"],
+        "PORT": CONFIG["DB_PORT"],
     }
 }
 
@@ -193,7 +198,7 @@ else:
         "socialaccount_login_error": "/account/provider/callback",
     }
 # Use email for authentication instead of usernames.
-ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
