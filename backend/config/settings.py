@@ -82,8 +82,8 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     # Local Apps
-    # "fcalerts.apps.users",
-    # "fcalerts.apps.core",
+    "fcalerts.apps.users",
+    "fcalerts.apps.core",
 ]
 
 MIDDLEWARE = [
@@ -204,3 +204,7 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "\u200B"
+
+
+# Business logic
+MAX_KEYWORDS_PER_USER = CONFIG["MAX_KEYWORDS_PER_USER"]

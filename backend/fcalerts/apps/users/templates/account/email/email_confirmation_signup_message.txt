@@ -1,0 +1,11 @@
+Hello {{ user.username }}!
+
+Thank you for registering on shop-wiz.ie. 
+To continue with your account setup, please click on the link below:
+
+{{ activate_url }}
+
+If you didn’t request this, please ignore this email.
+
+Best regards,
+Shop Wiz Team
