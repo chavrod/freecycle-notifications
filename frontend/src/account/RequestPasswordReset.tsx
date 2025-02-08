@@ -1,64 +1,113 @@
 import { useState } from "react";
-import FormErrors from "../components/FormErrors";
-import { requestPasswordReset } from "../lib/allauth";
+
+import { Button, Paper, TextInput, Stack, Text, Flex } from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { IconCircleCheckFilled } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
 import { Link } from "react-router-dom";
-import Button from "../components/Button";
 
-export default function RequestPasswordReset() {
-  const [email, setEmail] = useState("");
-  const [response, setResponse] = useState({ fetching: false, content: null });
+import { requestPasswordReset, formatAuthErrors } from "../auth/api";
 
-  function submit() {
-    setResponse({ ...response, fetching: true });
-    requestPasswordReset(email)
-      .then((content) => {
-        setResponse((r) => {
-          return { ...r, content };
+export default function ForgotPasswordPage() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [
+    showPasswordResetEmailConfirmation,
+    setShowPasswordResetEmailConfirmation,
+  ] = useState(false);
+
+  const form = useForm({
+    initialValues: {
+      email: "",
+    },
+    validate: {
+      // eslint-disable-next-line no-confusing-arrow
+      email: (value) =>
+        !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(value)
+          ? "Invalid email."
+          : null,
+    },
+  });
+
+  const handleFormSubmit = async () => {
+    try {
+      const { email } = form.values;
+      if (!email) return;
+
+      setIsLoading(true);
+
+      const res = await requestPasswordReset(email);
+
+      if (res.status == 200) {
+        setShowPasswordResetEmailConfirmation(true);
+      } else if (res.status == 400) {
+        form.setErrors(formatAuthErrors(res.errors));
+      } else {
+        notifications.show({
+          title: "Server Error!",
+          message: "Please try again later or contact support.",
+          color: "red",
         });
-      })
-      .catch((e) => {
-        console.error(e);
-        window.alert(e);
-      })
-      .then(() => {
-        setResponse((r) => {
-          return { ...r, fetching: false };
-        });
+      }
+    } catch (error: any) {
+      notifications.show({
+        title: "Server Error!",
+        message: error?.message || "Please try again later or contact support.",
+        color: "red",
       });
-  }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  if (response.content?.status === 200) {
-    return (
-      <div>
-        <h1>Reset Password</h1>
-        <p>Password reset sent.</p>
-      </div>
-    );
-  }
   return (
-    <div>
-      <h1>Reset Password</h1>
-      <p>
-        Remember your password? <Link to="/account/login">Back to login.</Link>
-      </p>
-
-      <FormErrors errors={response.content?.errors} />
-
-      <div>
-        <label>
-          Email{" "}
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            required
-          />
-        </label>
-        <FormErrors param="email" errors={response.content?.errors} />
-      </div>
-      <Button disabled={response.fetching} onClick={() => submit()}>
-        Reset
-      </Button>
-    </div>
+    <Flex
+      gap="md"
+      justify="center"
+      align="center"
+      direction="column"
+      style={{ height: "calc(100vh - 130px)", border: "1px solid red" }}
+    >
+      <Paper maw="600px" radius="md" p="md">
+        {!showPasswordResetEmailConfirmation ? (
+          <form onSubmit={form.onSubmit(handleFormSubmit)}>
+            <TextInput
+              id="login_email"
+              label="Forgot Password?"
+              description="Enter your email and we'll send you a reset link"
+              placeholder="Your email address"
+              // eslint-disable-next-line react/jsx-props-no-spreading
+              {...form.getInputProps("email")}
+              disabled={isLoading}
+            />
+            <Button
+              type="submit"
+              disabled={isLoading}
+              loading={isLoading}
+              style={{ marginTop: 20 }}
+              fullWidth
+            >
+              Request Password Reset
+            </Button>
+          </form>
+        ) : (
+          <Stack
+            justify="center"
+            style={{ textAlign: "center" }}
+            align="center"
+          >
+            <IconCircleCheckFilled size={80} style={{ color: "green" }} />
+            <Text>
+              We have sent a password reset email to{" "}
+              <strong>{form.values.email}</strong>. Please head to your inbox.
+            </Text>
+          </Stack>
+        )}
+        <Link to="/account/login" style={{ textDecoration: "none" }}>
+          <Button variant="outline" fullWidth mt="xs">
+            Go to Login
+          </Button>
+        </Link>
+      </Paper>
+    </Flex>
   );
 }

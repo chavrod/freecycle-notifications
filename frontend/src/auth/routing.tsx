@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuthChange, AuthChangeEvent, useAuthStatus } from "./hooks";
-import { Flows, AuthenticatorType } from "../lib/allauth";
+import { Flows } from "./api";
+import { AuthRes, AuthFlow } from "./AuthContext";
 
 export const URLs = Object.freeze({
   LOGIN_URL: "/account/login",
@@ -8,70 +9,43 @@ export const URLs = Object.freeze({
   LOGOUT_REDIRECT_URL: "/",
 });
 
-const flow2path = {};
-flow2path[Flows.LOGIN] = "/account/login";
-flow2path[Flows.LOGIN_BY_CODE] = "/account/login/code/confirm";
-flow2path[Flows.SIGNUP] = "/account/signup";
-flow2path[Flows.VERIFY_EMAIL] = "/account/verify-email";
-flow2path[Flows.PROVIDER_SIGNUP] = "/account/provider/signup";
-flow2path[Flows.REAUTHENTICATE] = "/account/reauthenticate";
-flow2path[`${Flows.MFA_AUTHENTICATE}:${AuthenticatorType.TOTP}`] =
-  "/account/authenticate/totp";
-flow2path[`${Flows.MFA_AUTHENTICATE}:${AuthenticatorType.RECOVERY_CODES}`] =
-  "/account/authenticate/recovery-codes";
-flow2path[`${Flows.MFA_AUTHENTICATE}:${AuthenticatorType.WEBAUTHN}`] =
-  "/account/authenticate/webauthn";
-flow2path[`${Flows.MFA_REAUTHENTICATE}:${AuthenticatorType.TOTP}`] =
-  "/account/reauthenticate/totp";
-flow2path[`${Flows.MFA_REAUTHENTICATE}:${AuthenticatorType.RECOVERY_CODES}`] =
-  "/account/reauthenticate/recovery-codes";
-flow2path[`${Flows.MFA_REAUTHENTICATE}:${AuthenticatorType.WEBAUTHN}`] =
-  "/account/reauthenticate/webauthn";
-flow2path[Flows.MFA_WEBAUTHN_SIGNUP] = "/account/signup/passkey/create";
+export const Flow2Path = Object.freeze({
+  [Flows.LOGIN]: "/account/login",
+  [Flows.SIGNUP]: "/account/signup",
+  [Flows.VERIFY_EMAIL]: "/account/verify-email",
+});
 
-export function pathForFlow(flow, typ) {
-  let key = flow.id;
-  if (typeof flow.types !== "undefined") {
-    typ = typ ?? flow.types[0];
-    key = `${key}:${typ}`;
+export function pathForFlow(flow?: AuthFlow) {
+  if (!flow) {
+    throw new Error("No flow provided");
   }
-  const path = flow2path[key] ?? flow2path[flow.id];
-  if (!path) {
+
+  const path = Flow2Path[flow.id];
+  if (path === undefined) {
     throw new Error(`Unknown path for flow: ${flow.id}`);
   }
   return path;
 }
 
-export function pathForPendingFlow(auth) {
-  const flow = auth.data.flows.find((flow) => flow.is_pending);
-  if (flow) {
-    return pathForFlow(flow);
-  }
-  return null;
-}
-
-function navigateToPendingFlow(auth) {
-  const path = pathForPendingFlow(auth);
-  if (path) {
-    return <Navigate to={path} />;
-  }
-  return null;
-}
-
-export function AuthenticatedRoute({ children }) {
+export function AuthenticatedRoute({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const location = useLocation();
   const [, status] = useAuthStatus();
   const next = `next=${encodeURIComponent(
     location.pathname + location.search
   )}`;
-  if (status.isAuthenticated) {
+
+  if (status?.isAuthenticated) {
     return children;
   } else {
     return <Navigate to={`${URLs.LOGIN_URL}?${next}`} />;
   }
 }
 
-export function AnonymousRoute({ children }) {
+export function AnonymousRoute({ children }: { children: React.ReactNode }) {
   const [, status] = useAuthStatus();
   if (!status.isAuthenticated) {
     return children;
@@ -80,31 +54,41 @@ export function AnonymousRoute({ children }) {
   }
 }
 
-export function AuthChangeRedirector({ children }) {
+// Define a type guard for AuthRes
+function isAuthRes(auth: any): auth is AuthRes {
+  return (
+    auth && typeof auth === "object" && "data" in auth && "flows" in auth.data
+  );
+}
+
+export function AuthChangeRedirector({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [auth, event] = useAuthChange();
+  console.log("AuthChangeRedirector: ", "auth: ", auth, "event: ", event);
   const location = useLocation();
   switch (event) {
     case AuthChangeEvent.LOGGED_OUT:
       return <Navigate to={URLs.LOGOUT_REDIRECT_URL} />;
     case AuthChangeEvent.LOGGED_IN:
       return <Navigate to={URLs.LOGIN_REDIRECT_URL} />;
-    case AuthChangeEvent.REAUTHENTICATED: {
-      const next = new URLSearchParams(location.search).get("next") || "/";
-      return <Navigate to={next} />;
-    }
     case AuthChangeEvent.REAUTHENTICATION_REQUIRED: {
+      // TODO: REPORT TO SENTRY
+      // Use the custom type guard
+      if (!isAuthRes(auth)) {
+        throw new Error(
+          "Expected auth to be AuthRes but got an unexpected value."
+        );
+      }
+
       const next = `next=${encodeURIComponent(
         location.pathname + location.search
       )}`;
-      const path = pathForFlow(auth.data.flows[0]);
+      const path = pathForFlow(auth.data.flows?.[0]);
       return <Navigate to={`${path}?${next}`} state={{ reauth: auth }} />;
     }
-    case AuthChangeEvent.FLOW_UPDATED:
-      const pendingFlow = navigateToPendingFlow(auth);
-      if (!pendingFlow) {
-        throw new Error();
-      }
-      return pendingFlow;
     default:
       break;
   }

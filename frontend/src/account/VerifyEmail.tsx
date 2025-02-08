@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { useLoaderData, Navigate } from "react-router-dom";
-import { getEmailVerification, verifyEmail } from "../lib/allauth";
-import Button from "../components/Button";
 
-export async function loader({ params }) {
+import { Button, Text, Stack, Title } from "@mantine/core";
+import { useLoaderData, Navigate, LoaderFunctionArgs } from "react-router-dom";
+
+import { AuthRes } from "../auth/AuthContext";
+import { getEmailVerification, verifyEmail } from "../auth/api";
+import notifyError from "../utils/notifyError";
+
+export async function loader({ params }: LoaderFunctionArgs) {
   const key = params.key;
   const resp = await getEmailVerification(key);
   return { key, verification: resp };
@@ -11,64 +15,81 @@ export async function loader({ params }) {
 
 export default function VerifyEmail() {
   const { key, verification } = useLoaderData();
-  const [response, setResponse] = useState({ fetching: false, content: null });
+
+  const [confirmationRes, setConfirmationRes] = useState<{
+    fetching: boolean;
+    content: AuthRes | null;
+  }>({ fetching: false, content: null });
 
   function submit() {
-    setResponse({ ...response, fetching: true });
+    setConfirmationRes({ ...confirmationRes, fetching: true });
     verifyEmail(key)
       .then((content) => {
-        setResponse((r) => {
+        setConfirmationRes((r) => {
           return { ...r, content };
         });
+        if (content.status == 500) {
+          notifyError({ message: content.data });
+        }
       })
       .catch((e) => {
-        console.error(e);
-        window.alert(e);
+        notifyError({ message: e.data });
       })
       .then(() => {
-        setResponse((r) => {
+        setConfirmationRes((r) => {
           return { ...r, fetching: false };
         });
       });
   }
 
-  if ([200, 401].includes(response.content?.status)) {
+  if (
+    confirmationRes.content &&
+    [200, 401].includes(confirmationRes.content?.status)
+  ) {
     return <Navigate to="/account/email" />;
+  }
+  if (!verification) {
+    return <></>;
   }
 
   let body = null;
   if (verification.status === 200) {
     body = (
       <>
-        <p>
+        <Text>
           Please confirm that{" "}
           <a href={"mailto:" + verification.data.email}>
             {verification.data.email}
           </a>{" "}
-          is an email address for user {verification.data.user.str}.
-        </p>
-        <Button disabled={response.fetching} onClick={() => submit()}>
+          is an email address for user {verification?.data?.user?.username}.
+        </Text>
+        <Button
+          size="lg"
+          disabled={confirmationRes.fetching}
+          loading={confirmationRes.fetching}
+          onClick={() => submit()}
+        >
           Confirm
         </Button>
       </>
     );
   } else if (!verification.data?.email) {
-    body = <p>Invalid verification link.</p>;
+    body = <Text>Invalid verification link.</Text>;
   } else {
     body = (
-      <p>
+      <Text>
         Unable to confirm email{" "}
         <a href={"mailto:" + verification.data.email}>
           {verification.data.email}
         </a>{" "}
         because it is already confirmed.
-      </p>
+      </Text>
     );
   }
   return (
-    <div>
-      <h1>Confirm Email Address</h1>
+    <Stack m="xl" h="calc(100vh - 210px)" align="center" justify="center">
+      <Title order={2}>Confirm Email Address</Title>
       {body}
-    </div>
+    </Stack>
   );
 }

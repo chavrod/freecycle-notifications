@@ -1,11 +1,18 @@
 import { useState } from "react";
-import FormErrors from "../components/FormErrors";
-import { getPasswordReset, resetPassword } from "../lib/allauth";
-import { Navigate, Link, useLoaderData } from "react-router-dom";
-import Button from "../components/Button";
 
-export async function loader({ params }) {
+import { Navigate, useLoaderData, LoaderFunctionArgs } from "react-router-dom";
+import { Button, Text, Stack, Modal, Paper } from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
+import { useDisclosure } from "@mantine/hooks";
+
+import PasswordStrengthInput from "../auth/PasswordStrengthInput";
+import { getPasswordReset, resetPassword, formatAuthErrors } from "../auth/api";
+import { AuthRes } from "../auth/AuthContext";
+
+export async function loader({ params }: LoaderFunctionArgs) {
   const key = params.key;
+
   const resp = await getPasswordReset(key);
   return { key, keyResponse: resp };
 }
@@ -13,88 +20,113 @@ export async function loader({ params }) {
 export default function ResetPassword() {
   const { key, keyResponse } = useLoaderData();
 
-  const [password1, setPassword1] = useState("");
-  const [password2, setPassword2] = useState("");
-  const [password2Errors, setPassword2Errors] = useState([]);
+  const [visible, { toggle }] = useDisclosure(false);
 
-  const [response, setResponse] = useState({ fetching: false, content: null });
+  const [confirmationRes, setConfirmationRes] = useState<{
+    fetching: boolean;
+    content: AuthRes | null;
+  }>({ fetching: false, content: null });
 
-  function submit() {
-    if (password2 !== password1) {
-      setPassword2Errors([
-        { param: "password2", message: "Password does not match." },
-      ]);
-      return;
-    }
-    setPassword2Errors([]);
-    setResponse({ ...response, fetching: true });
-    resetPassword({ key, password: password1 })
-      .then((resp) => {
-        setResponse((r) => {
-          return { ...r, content: resp };
+  const form = useForm({
+    initialValues: {
+      password1: "",
+      password2: "", // repeat password
+    },
+    validate: {
+      password1: (value) =>
+        value.trim().length === 0 ? "Password is required." : null,
+      password2: (value, values) =>
+        value !== values.password1 ? "Passwords must match." : null,
+    },
+  });
+
+  const handleFormSubmit = async () => {
+    try {
+      setConfirmationRes({ ...confirmationRes, fetching: true });
+
+      const { password1 } = form.values;
+      const res = await resetPassword({ key, password: password1 });
+      setConfirmationRes({ fetching: false, content: res });
+
+      if (res.status === 400) {
+        form.setErrors(formatAuthErrors(res.errors, { password: "password1" }));
+      } else if (res.status !== 401) {
+        // TODO: REPORT TO SENTRY
+        notifications.show({
+          title: "Server Error!",
+          message:
+            "Unexpected error. Please try again later or contact help@shopwiz.ie",
+          color: "red",
         });
-      })
-      .catch((e) => {
-        console.error(e);
-        window.alert(e);
-      })
-      .then(() => {
-        setResponse((r) => {
-          return { ...r, fetching: false };
-        });
+      }
+    } catch (error) {
+      // TODO: REPORT UNKNOW ERROR TO SENTRY
+      notifications.show({
+        title: "Server Error!",
+        message: "Unexpected error. Please try again later.",
+        color: "red",
       });
-  }
-  if ([200, 401].includes(response.content?.status)) {
+    } finally {
+      if (confirmationRes.fetching)
+        setConfirmationRes({ ...confirmationRes, fetching: false });
+    }
+  };
+
+  if (
+    confirmationRes.content?.status &&
+    confirmationRes.content?.status === 401
+  ) {
     return <Navigate to="/account/login" />;
   }
-  let body;
-  if (keyResponse.status !== 200) {
-    body = <FormErrors param="key" errors={keyResponse.errors} />;
-  } else if (response.content?.error?.detail?.key) {
-    body = <FormErrors param="key" errors={response.content?.errors} />;
-  } else {
-    body = (
-      <>
-        <div>
-          <label>
-            Password:{" "}
-            <input
-              autoComplete="new-password"
-              value={password1}
-              onChange={(e) => setPassword1(e.target.value)}
-              type="password"
-              required
-            />
-          </label>
-          <FormErrors param="password" errors={response.content?.errors} />
-        </div>
-        <div>
-          <label>
-            Password (again):{" "}
-            <input
-              value={password2}
-              onChange={(e) => setPassword2(e.target.value)}
-              type="password"
-              required
-            />
-          </label>
-          <FormErrors param="password2" errors={password2Errors} />
-        </div>
 
-        <Button disabled={response.fetching} onClick={() => submit()}>
-          Reset
-        </Button>
-      </>
-    );
+  if (!keyResponse) {
+    return <></>;
   }
 
   return (
-    <div>
-      <h1>Reset Password</h1>
-      <p>
-        Remember your password? <Link to="/account/login">Back to login.</Link>
-      </p>
-      {body}
-    </div>
+    <Modal
+      opened={true}
+      onClose={() => {}}
+      fullScreen
+      transitionProps={{ transition: "fade", duration: 200 }}
+      withCloseButton={false}
+    >
+      <Stack
+        align="center"
+        justify="center"
+        style={{ height: "calc(100vh - 130px)" }}
+      >
+        <Paper radius="md" p="md">
+          {keyResponse.status === 200 ? (
+            <form onSubmit={form.onSubmit(handleFormSubmit)}>
+              <Text>
+                Set new password for your{" "}
+                <Text td="underline" c="blue" span>
+                  {keyResponse.data.user?.email}
+                </Text>{" "}
+                account.
+              </Text>
+              <PasswordStrengthInput
+                form={form}
+                isLoading={confirmationRes.fetching}
+                visible={visible}
+                toggle={toggle}
+              />
+              <Button
+                type="submit"
+                disabled={confirmationRes.fetching}
+                loading={confirmationRes.fetching}
+                fullWidth
+                my="md"
+              >
+                Reset Password
+              </Button>
+            </form>
+          ) : (
+            <Text>Invalid password reset token.</Text>
+          )}
+        </Paper>
+      </Stack>
+    </Modal>
   );
 }

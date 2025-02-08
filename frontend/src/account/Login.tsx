@@ -1,86 +1,122 @@
 import { useState } from "react";
-import FormErrors from "../components/FormErrors";
-import { login } from "../lib/allauth";
+
+import { TextInput, Text, Button, PasswordInput } from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
 import { Link } from "react-router-dom";
-import { useConfig } from "../auth";
-import ProviderList from "../socialaccount/ProviderList";
-import Button from "../components/Button";
-import WebAuthnLoginButton from "../mfa/WebAuthnLoginButton";
 
-export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [response, setResponse] = useState({ fetching: false, content: null });
-  const config = useConfig();
-  const hasProviders = config.data.socialaccount?.providers?.length > 0;
+import { login, formatAuthErrors } from "../auth/api";
+import { AuthFlow } from "../auth/AuthContext";
 
-  function submit() {
-    setResponse({ ...response, fetching: true });
-    login({ email, password })
-      .then((content) => {
-        setResponse((r) => {
-          return { ...r, content };
-        });
-      })
-      .catch((e) => {
-        console.error(e);
-        window.alert(e);
-      })
-      .then(() => {
-        setResponse((r) => {
-          return { ...r, fetching: false };
-        });
+function LoginForm() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const form = useForm({
+    initialValues: {
+      email: "",
+      password: "",
+    },
+    validate: {
+      email: (value) =>
+        !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(value)
+          ? "Invalid email."
+          : null,
+      password: (value) =>
+        value.trim().length === 0 ? "Password is required." : null,
+    },
+  });
+
+  const handleFormSubmit = async () => {
+    try {
+      setIsLoading(true);
+
+      const { email, password } = form.values;
+
+      const res = await login({ email, password });
+      const resCode: number | undefined = res?.status;
+      console.log("LOGIN RES: ", res);
+
+      if (resCode === 400) {
+        form.setErrors(formatAuthErrors(res.errors));
+      } else if (resCode === 401) {
+        const verifyEmailPending = res.data.flows.find(
+          (flow: AuthFlow) =>
+            flow.id === "verify_email" && flow.is_pending === true
+        );
+        // TODO: REPORT TO SENTRY
+        setError(
+          verifyEmailPending
+            ? "You must verify your email first"
+            : "Unexpected error. Please try again later or contact help@fcalerts.io"
+        );
+      } else {
+        // TODO: REPORT TO SENTRY
+        setError(
+          "Unexpected error. Please try again later or contacthelp@fcalerts.io"
+        );
+      }
+    } catch (err: any) {
+      notifications.show({
+        title: "Server Error!",
+        message: err?.message || "Unknown error. Please try again later.",
+        color: "red",
       });
-  }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div>
-      <h1>Login</h1>
-      <p>
-        No account? <Link to="/account/signup">Sign up here.</Link>
-      </p>
-
-      <FormErrors errors={response.content?.errors} />
-
-      <div>
-        <label>
-          Email{" "}
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            required
-          />
-        </label>
-        <FormErrors param="email" errors={response.content?.errors} />
-      </div>
-      <div>
-        <label>
-          Password:{" "}
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            required
-          />
-        </label>
-        <Link to="/account/password/reset">Forgot your password?</Link>
-        <FormErrors param="password" errors={response.content?.errors} />
-      </div>
-      <Button disabled={response.fetching} onClick={() => submit()}>
+    <form onSubmit={form.onSubmit(handleFormSubmit)}>
+      <TextInput
+        id="login_email"
+        label="Email"
+        placeholder="Your email address"
+        required
+        {...form.getInputProps("email")}
+        disabled={isLoading}
+      />
+      <PasswordInput
+        id="login_password"
+        label="Password"
+        placeholder="Your password"
+        required
+        style={{ marginTop: 15 }}
+        {...form.getInputProps("password")}
+        disabled={isLoading}
+      />
+      {error && (
+        <Text size="sm" color="red" mt="md">
+          {error}
+        </Text>
+      )}
+      <Button
+        type="submit"
+        disabled={isLoading}
+        loading={isLoading}
+        style={{ marginTop: 20 }}
+        fullWidth
+      >
         Login
       </Button>
-      {config.data.account.login_by_code_enabled ? (
-        <Link className="btn btn-secondary" to="/account/login/code">
-          Mail me a sign-in code
-        </Link>
-      ) : null}
-      <WebAuthnLoginButton>Sign in with a passkey</WebAuthnLoginButton>
-      {hasProviders ? (
-        <>
-          <h2>Or use a third-party</h2>
-          <ProviderList callbackURL="/account/provider/callback" />
-        </>
-      ) : null}
-    </div>
+      <Link to="account/password/reset">
+        <Text
+          mt="xs"
+          size="sm"
+          c="brand.9"
+          sx={{
+            cursor: "pointer",
+            "&:hover": {
+              textDecoration: "underline",
+            },
+          }}
+        >
+          Forgot Password?
+        </Text>
+      </Link>
+    </form>
   );
 }
+
+export default LoginForm;
