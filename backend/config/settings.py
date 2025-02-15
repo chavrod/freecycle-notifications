@@ -16,18 +16,18 @@ SITE_ID = 1
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load config
-with open("/etc/fcalerts_config.json") as f:
+with open("/etc/pingcycle_config.json") as f:
     CONFIG = json.loads(f.read())
 
 ENV = CONFIG["ENV"]
 if ENV == "DEV":
-    BASE_DOMAIN = "127.0.0.1"
-    # CSRF_COOKIE_DOMAIN = f".{CONFIG["BASE_DOMAINNN"]}"
     DEBUG = True
+
+    BASE_DOMAIN = "127.0.0.1"
     ALLOWED_HOSTS = ["*"]
     # CSRF
     CSRF_COOKIE_SECURE = False
-    CSRF_COOKIE_DOMAIN = "127.0.0.1"
+    CSRF_COOKIE_DOMAIN = BASE_DOMAIN
     CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1:3000"]
     # CORS
     CORS_ALLOW_ALL_ORIGINS = True
@@ -58,6 +58,12 @@ CSRF_COOKIE_HTTPONLY = False
 
 # Other CORS
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    "x-email-verification-key",
+    "x-csrftoken",
+    "content-type",
+    "x-password-reset-key",
+]
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -83,8 +89,8 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     # Local Apps
-    "fcalerts.apps.users",
-    "fcalerts.apps.core",
+    "pingcycle.apps.users",
+    "pingcycle.apps.core",
 ]
 
 MIDDLEWARE = [
@@ -182,6 +188,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # Auth
+ACCOUNT_ADAPTER = "pingcycle.apps.users.adapters.CustomAccountAdapter"
 if ENV == "DEV":
     HEADLESS_FRONTEND_URLS = {
         "account_confirm_email": "http://127.0.0.1:3000/account/verify-email/{key}",
@@ -205,7 +212,7 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "\u200B"
-
+TEMP_ALLOWED_EMAILS = CONFIG["TEMP_ALLOWED_EMAILS"]
 
 # Business logic
 MAX_KEYWORDS_PER_USER = CONFIG["MAX_KEYWORDS_PER_USER"]

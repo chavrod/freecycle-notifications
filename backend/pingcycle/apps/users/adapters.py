@@ -1,9 +1,15 @@
 from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.core.exceptions import (
+    ImmediateHttpResponse,
+)
+
+from config.settings import TEMP_ALLOWED_EMAILS
 
 
-class MyAccountAdapter(DefaultAccountAdapter):
+class CustomAccountAdapter(DefaultAccountAdapter):
     def clean_password(self, password, user=None):
         password_errors = []
 
@@ -42,3 +48,18 @@ class MyAccountAdapter(DefaultAccountAdapter):
         #     )
 
         return super().clean_password(password, user)
+
+    # TODO: TEMP
+    def is_open_for_signup(self, request):
+
+        print("request: ", request)
+        raise ImmediateHttpResponse(
+            response=HttpResponse(
+                "We are not open for Signup at the moment", status=403
+            )
+        )
+        return False
+        """
+        Checks whether or not the site is open for signups.
+        """
+        return True

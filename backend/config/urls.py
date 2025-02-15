@@ -19,7 +19,7 @@ from django.urls import path, include
 urlpatterns = [
     path(
         "api/users/",
-        include(("fcalerts.apps.users.urls", "users"), namespace="users"),
+        include(("pingcycle.apps.users.urls", "users"), namespace="users"),
     ),
-    path("api/", include(("fcalerts.apps.core.urls", "core"), namespace="core")),
+    path("api/", include(("pingcycle.apps.core.urls", "core"), namespace="core")),
 ]
