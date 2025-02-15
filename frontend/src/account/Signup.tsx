@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { TextInput, Button, Center, Stack, Text, Title } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { notifications } from "@mantine/notifications";
 import { useDisclosure } from "@mantine/hooks";
 import { IconCircleCheckFilled } from "@tabler/icons-react";
 
@@ -13,6 +12,7 @@ function Signup() {
   const [visible, { toggle }] = useDisclosure(false);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isRegistrationSubmitted, setIsRegistrationSubmitted] = useState(false);
 
   const form = useForm({
@@ -36,6 +36,7 @@ function Signup() {
 
   const handleFormSubmit = async () => {
     try {
+      setError(null);
       setIsLoading(true);
 
       const { email, password1 } = form.values;
@@ -47,18 +48,19 @@ function Signup() {
       if (res.status === 400) {
         form.setErrors(formatAuthErrors(res.errors, { password: "password1" }));
         // 401 indicates that email verificaiton is required
-      } else if (res.status != 401) {
+      } else if (res.status == 401) {
         setIsRegistrationSubmitted(true);
       } else {
-        throw new Error(res.errors[0].message);
+        // TODO: REPORT UNKNOW ERROR TO SENTRY
+        setError(
+          "Unexpected error. Please try again later or contact help@pingcycle.io"
+        );
       }
     } catch (error: any) {
-      setIsLoading(false);
-      notifications.show({
-        title: "Server Error!",
-        message: error?.message || "Unknown error. Please try again later.",
-        color: "red",
-      });
+      // TODO: REPORT UNKNOW ERROR TO SENTRY
+      setError(
+        "Unexpected error. Please try again later or contact help@pingcycle.io"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -93,6 +95,11 @@ function Signup() {
           >
             Signup
           </Button>
+          {error && (
+            <Text size="sm" color="red" mt="md">
+              {error}
+            </Text>
+          )}
         </form>
       ) : (
         // Email verification message UI

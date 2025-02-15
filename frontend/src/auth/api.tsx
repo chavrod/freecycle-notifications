@@ -1,10 +1,8 @@
 import getClientSideCSRF from "../utils/getCSRF";
 
 const BASE_URL = `${import.meta.env.VITE_API_URL}/users/_allauth/browser/v1`;
+
 console.log("BASE_URL: ", BASE_URL);
-const ACCEPT_JSON = {
-  accept: "application/json",
-};
 
 export const AuthProcess = Object.freeze({
   LOGIN: "login",
@@ -71,7 +69,6 @@ async function request(
   const options: any = {
     method,
     headers: {
-      ...ACCEPT_JSON,
       ...headers,
     },
     credentials: "include",

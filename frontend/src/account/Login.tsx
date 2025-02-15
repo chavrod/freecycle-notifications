@@ -49,12 +49,12 @@ function LoginForm() {
         setError(
           verifyEmailPending
             ? "You must verify your email first"
-            : "Unexpected error. Please try again later or contact help@fcalerts.io"
+            : "Unexpected error. Please try again later or contact help@pingcycle.io"
         );
       } else {
         // TODO: REPORT TO SENTRY
         setError(
-          "Unexpected error. Please try again later or contacthelp@fcalerts.io"
+          "Unexpected error. Please try again later or contact help@pingcycle.io"
         );
       }
     } catch (err: any) {

@@ -56,7 +56,7 @@ export default function ResetPassword() {
         notifications.show({
           title: "Server Error!",
           message:
-            "Unexpected error. Please try again later or contact help@shopwiz.ie",
+            "Unexpected error. Please try again later or contact help@pingcycle.io",
           color: "red",
         });
       }
