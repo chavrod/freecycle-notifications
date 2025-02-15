@@ -1,12 +1,13 @@
 import { useState } from "react";
 
-import { TextInput, Text, Button, PasswordInput } from "@mantine/core";
+import { TextInput, Text, Button, PasswordInput, Group } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { Link } from "react-router-dom";
 
 import { login, formatAuthErrors } from "../auth/api";
 import { AuthFlow } from "../auth/AuthContext";
+import CentredFlexPaper from "../components/CenteredFlexPaper";
 
 function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -68,54 +69,58 @@ function LoginForm() {
   };
 
   return (
-    <form onSubmit={form.onSubmit(handleFormSubmit)}>
-      <TextInput
-        id="login_email"
-        label="Email"
-        placeholder="Your email address"
-        required
-        {...form.getInputProps("email")}
-        disabled={isLoading}
-      />
-      <PasswordInput
-        id="login_password"
-        label="Password"
-        placeholder="Your password"
-        required
-        style={{ marginTop: 15 }}
-        {...form.getInputProps("password")}
-        disabled={isLoading}
-      />
-      {error && (
-        <Text size="sm" color="red" mt="md">
-          {error}
-        </Text>
-      )}
-      <Button
-        type="submit"
-        disabled={isLoading}
-        loading={isLoading}
-        style={{ marginTop: 20 }}
-        fullWidth
-      >
-        Login
-      </Button>
-      <Link to="account/password/reset">
-        <Text
-          mt="xs"
-          size="sm"
-          c="brand.9"
-          sx={{
-            cursor: "pointer",
-            "&:hover": {
-              textDecoration: "underline",
-            },
-          }}
+    <CentredFlexPaper title="Login">
+      <form onSubmit={form.onSubmit(handleFormSubmit)}>
+        <TextInput
+          id="login_email"
+          label="Email"
+          placeholder="Your email address"
+          required
+          {...form.getInputProps("email")}
+          disabled={isLoading}
+        />
+        <PasswordInput
+          id="login_password"
+          label="Password"
+          placeholder="Your password"
+          required
+          style={{ marginTop: 15 }}
+          {...form.getInputProps("password")}
+          disabled={isLoading}
+        />
+        {error && (
+          <Text size="sm" color="red" mt="md">
+            {error}
+          </Text>
+        )}
+        <Button
+          type="submit"
+          disabled={isLoading}
+          loading={isLoading}
+          style={{ marginTop: 20 }}
+          fullWidth
         >
-          Forgot Password?
-        </Text>
-      </Link>
-    </form>
+          Login
+        </Button>
+        <Group justify="flex-end">
+          <Link to="/account/password/reset">
+            <Text
+              mt="xs"
+              size="sm"
+              c="brand.9"
+              sx={{
+                cursor: "pointer",
+                "&:hover": {
+                  textDecoration: "underline",
+                },
+              }}
+            >
+              Forgot Password?
+            </Text>
+          </Link>
+        </Group>
+      </form>
+    </CentredFlexPaper>
   );
 }
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { Navigate, useLoaderData, LoaderFunctionArgs } from "react-router-dom";
-import { Button, Text, Stack, Modal, Paper } from "@mantine/core";
+import { Button, Text, Paper } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useDisclosure } from "@mantine/hooks";
@@ -9,6 +9,7 @@ import { useDisclosure } from "@mantine/hooks";
 import PasswordStrengthInput from "../auth/PasswordStrengthInput";
 import { getPasswordReset, resetPassword, formatAuthErrors } from "../auth/api";
 import { AuthRes } from "../auth/AuthContext";
+import CentredFlexPaper from "../components/CenteredFlexPaper";
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const key = params.key;
@@ -84,49 +85,37 @@ export default function ResetPassword() {
   }
 
   return (
-    <Modal
-      opened={true}
-      onClose={() => {}}
-      fullScreen
-      transitionProps={{ transition: "fade", duration: 200 }}
-      withCloseButton={false}
-    >
-      <Stack
-        align="center"
-        justify="center"
-        style={{ height: "calc(100vh - 130px)" }}
-      >
-        <Paper radius="md" p="md">
-          {keyResponse.status === 200 ? (
-            <form onSubmit={form.onSubmit(handleFormSubmit)}>
-              <Text>
-                Set new password for your{" "}
-                <Text td="underline" c="blue" span>
-                  {keyResponse.data.user?.email}
-                </Text>{" "}
-                account.
-              </Text>
-              <PasswordStrengthInput
-                form={form}
-                isLoading={confirmationRes.fetching}
-                visible={visible}
-                toggle={toggle}
-              />
-              <Button
-                type="submit"
-                disabled={confirmationRes.fetching}
-                loading={confirmationRes.fetching}
-                fullWidth
-                my="md"
-              >
-                Reset Password
-              </Button>
-            </form>
-          ) : (
-            <Text>Invalid password reset token.</Text>
-          )}
-        </Paper>
-      </Stack>
-    </Modal>
+    <CentredFlexPaper>
+      <Paper radius="md" p="md">
+        {keyResponse.status === 200 ? (
+          <form onSubmit={form.onSubmit(handleFormSubmit)}>
+            <Text>
+              Set new password for your{" "}
+              <Text td="underline" c="blue" span>
+                {keyResponse.data.user?.email}
+              </Text>{" "}
+              account.
+            </Text>
+            <PasswordStrengthInput
+              form={form}
+              isLoading={confirmationRes.fetching}
+              visible={visible}
+              toggle={toggle}
+            />
+            <Button
+              type="submit"
+              disabled={confirmationRes.fetching}
+              loading={confirmationRes.fetching}
+              fullWidth
+              my="md"
+            >
+              Reset Password
+            </Button>
+          </form>
+        ) : (
+          <Text>Invalid password reset token.</Text>
+        )}
+      </Paper>
+    </CentredFlexPaper>
   );
 }

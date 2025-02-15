@@ -1,14 +1,5 @@
 import { useState } from "react";
-import {
-  TextInput,
-  Button,
-  Center,
-  Stack,
-  Text,
-  Title,
-  Flex,
-  Paper,
-} from "@mantine/core";
+import { TextInput, Button, Center, Stack, Text, Title } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useDisclosure } from "@mantine/hooks";
@@ -16,6 +7,7 @@ import { IconCircleCheckFilled } from "@tabler/icons-react";
 
 import { signUp, formatAuthErrors } from "../auth/api";
 import PasswordStrengthInput from "../auth/PasswordStrengthInput";
+import CentredFlexPaper from "../components/CenteredFlexPaper";
 
 function Signup() {
   const [visible, { toggle }] = useDisclosure(false);
@@ -75,41 +67,33 @@ function Signup() {
   };
 
   return (
-    <Flex
-      gap="md"
-      justify="center"
-      align="center"
-      direction="column"
-      style={{ height: "calc(100vh - 130px)" }}
-    >
+    <CentredFlexPaper title="Signup">
       {!isRegistrationSubmitted ? (
-        <Paper w={{ base: "320px", sm: "480px" }} radius="md" p="md">
-          <form onSubmit={form.onSubmit(handleFormSubmit)}>
-            <TextInput
-              id="email"
-              label="Email"
-              placeholder="Your email address"
-              required
-              {...form.getInputProps("email")}
-              disabled={isLoading}
-            />
-            <PasswordStrengthInput
-              form={form}
-              isLoading={isLoading}
-              visible={visible}
-              toggle={toggle}
-            />
-            <Button
-              type="submit"
-              disabled={isLoading}
-              loading={isLoading}
-              style={{ marginTop: 20 }}
-              fullWidth
-            >
-              Signup
-            </Button>
-          </form>
-        </Paper>
+        <form onSubmit={form.onSubmit(handleFormSubmit)}>
+          <TextInput
+            id="email"
+            label="Email"
+            placeholder="Your email address"
+            required
+            {...form.getInputProps("email")}
+            disabled={isLoading}
+          />
+          <PasswordStrengthInput
+            form={form}
+            isLoading={isLoading}
+            visible={visible}
+            toggle={toggle}
+          />
+          <Button
+            type="submit"
+            disabled={isLoading}
+            loading={isLoading}
+            style={{ marginTop: 20 }}
+            fullWidth
+          >
+            Signup
+          </Button>
+        </form>
       ) : (
         // Email verification message UI
         <Center>
@@ -128,14 +112,10 @@ function Signup() {
               <strong>{form.values.email}</strong>. Please head to your inbox to
               verify.
             </Text>
-
-            {/* <Button variant="outline" onClick={handleMoveToLogin} fullWidth>
-              Go to Login
-            </Button> */}
           </Stack>
         </Center>
       )}
-    </Flex>
+    </CentredFlexPaper>
   );
 }
 

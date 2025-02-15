@@ -1,11 +1,12 @@
 import { useState } from "react";
 
-import { Button, Paper, TextInput, Stack, Text, Flex } from "@mantine/core";
+import { Button, TextInput, Stack, Text } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconCircleCheckFilled } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { Link } from "react-router-dom";
 
+import CentredFlexPaper from "../components/CenteredFlexPaper";
 import { requestPasswordReset, formatAuthErrors } from "../auth/api";
 
 export default function ForgotPasswordPage() {
@@ -60,54 +61,42 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <Flex
-      gap="md"
-      justify="center"
-      align="center"
-      direction="column"
-      style={{ height: "calc(100vh - 130px)", border: "1px solid red" }}
-    >
-      <Paper maw="600px" radius="md" p="md">
-        {!showPasswordResetEmailConfirmation ? (
-          <form onSubmit={form.onSubmit(handleFormSubmit)}>
-            <TextInput
-              id="login_email"
-              label="Forgot Password?"
-              description="Enter your email and we'll send you a reset link"
-              placeholder="Your email address"
-              // eslint-disable-next-line react/jsx-props-no-spreading
-              {...form.getInputProps("email")}
-              disabled={isLoading}
-            />
-            <Button
-              type="submit"
-              disabled={isLoading}
-              loading={isLoading}
-              style={{ marginTop: 20 }}
-              fullWidth
-            >
-              Request Password Reset
-            </Button>
-          </form>
-        ) : (
-          <Stack
-            justify="center"
-            style={{ textAlign: "center" }}
-            align="center"
+    <CentredFlexPaper>
+      {!showPasswordResetEmailConfirmation ? (
+        <form onSubmit={form.onSubmit(handleFormSubmit)}>
+          <TextInput
+            id="login_email"
+            label="Forgot Password?"
+            description="Enter your email and we'll send you a reset link"
+            placeholder="Your email address"
+            // eslint-disable-next-line react/jsx-props-no-spreading
+            {...form.getInputProps("email")}
+            disabled={isLoading}
+          />
+          <Button
+            type="submit"
+            disabled={isLoading}
+            loading={isLoading}
+            style={{ marginTop: 20 }}
+            fullWidth
           >
-            <IconCircleCheckFilled size={80} style={{ color: "green" }} />
-            <Text>
-              We have sent a password reset email to{" "}
-              <strong>{form.values.email}</strong>. Please head to your inbox.
-            </Text>
-          </Stack>
-        )}
-        <Link to="/account/login" style={{ textDecoration: "none" }}>
-          <Button variant="outline" fullWidth mt="xs">
-            Go to Login
+            Request Password Reset
           </Button>
-        </Link>
-      </Paper>
-    </Flex>
+        </form>
+      ) : (
+        <Stack justify="center" style={{ textAlign: "center" }} align="center">
+          <IconCircleCheckFilled size={80} style={{ color: "green" }} />
+          <Text>
+            We have sent a password reset email to{" "}
+            <strong>{form.values.email}</strong>. Please head to your inbox.
+          </Text>
+        </Stack>
+      )}
+      <Link to="/account/login" style={{ textDecoration: "none" }}>
+        <Button variant="outline" fullWidth mt="xs">
+          Go to Login
+        </Button>
+      </Link>
+    </CentredFlexPaper>
   );
 }
