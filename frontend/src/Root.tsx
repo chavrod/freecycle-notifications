@@ -1,8 +1,13 @@
-import { AppShell, Group, Button } from "@mantine/core";
+import { useState } from "react";
+
+import { Menu, Group, Button } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { useLocation, Link, Outlet } from "react-router-dom";
+import { IconLogout, IconSettings } from "@tabler/icons-react";
 
 import { useUser } from "./auth/hooks";
-import { useLocation, Link, Outlet } from "react-router-dom";
+import { logout } from "./auth/api";
+import AppShellComponent from "./components/AppShell";
 
 type NavBarItemProps = {
   to: string;
@@ -30,78 +35,55 @@ export default function Root() {
 
   const isMobile = useMediaQuery("(max-width: 48em)");
 
+  const [opened, setOpened] = useState(false);
+
   return (
-    <AppShell
-      header={{ height: 60 }}
-      navbar={{
-        width: 300,
-        breakpoint: "sm",
-        collapsed: { desktop: true, mobile: true },
-      }}
-      padding="md"
-    >
-      <AppShell.Header
-        h="75px"
-        style={{
-          backgroundColor: "rgba(196,213,191,255)", // Set the background color here
-        }}
-      >
-        <Group
-          mx={{ base: "xs", sm: "xl" }}
-          h="100%"
-          justify="space-between"
-          wrap="nowrap"
-        >
-          <Link to="/">
-            <Group gap={0} wrap="nowrap">
-              <img
-                src="/logo_header.svg"
-                alt=""
-                style={{
-                  width: "60px",
-                  height: "60px",
-                  objectFit: "cover",
-                  objectPosition: "-47px 0px",
-                }}
-              ></img>
-              <img
-                src="/name_header.svg"
-                alt=""
-                style={{
-                  width: "120px",
-                  height: "60px",
-                  objectFit: "cover",
-                  objectPosition: "0px -5px",
-                }}
-              ></img>
-            </Group>
-          </Link>
-          {user ? (
+    <AppShellComponent
+      navItems={
+        user ? (
+          <Menu
+            position="bottom-end"
+            shadow="md"
+            width={200}
+            opened={opened}
+            onChange={setOpened}
+          >
+            <Menu.Target>
+              <Button
+                variant={opened ? "filled" : "outline"}
+                size={isMobile ? "sm" : "md"}
+              >
+                Account
+              </Button>
+            </Menu.Target>
+
+            <Menu.Dropdown>
+              <Menu.Label>{user.email}</Menu.Label>
+              <Menu.Item leftSection={<IconSettings size={14} />}>
+                Account Settings
+              </Menu.Item>
+              <Menu.Item
+                color="red"
+                leftSection={<IconLogout size={14} />}
+                onClick={logout}
+              >
+                Logout
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        ) : (
+          <Group gap={isMobile ? 2 : "md"} justify="flex-end" wrap="nowrap">
+            <NavBarItem to="/account/login" text="Login" isMobile={isMobile} />
             <NavBarItem
-              to="/account/password/change"
-              text="Account"
+              to="/account/signup"
+              text="Signup"
               isMobile={isMobile}
             />
-          ) : (
-            <Group gap={isMobile ? 2 : "md"} justify="flex-end" wrap="nowrap">
-              <NavBarItem
-                to="/account/login"
-                text="Login"
-                isMobile={isMobile}
-              />
-              <NavBarItem
-                to="/account/signup"
-                text="Signup"
-                isMobile={isMobile}
-              />
-            </Group>
-          )}
-        </Group>
-      </AppShell.Header>
-
-      <AppShell.Main style={{ backgroundColor: "#ededed" }}>
-        <Outlet />
-      </AppShell.Main>
-    </AppShell>
+          </Group>
+        )
+      }
+    >
+      <Outlet />
+    </AppShellComponent>
   );
 }

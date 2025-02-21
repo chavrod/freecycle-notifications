@@ -21,7 +21,6 @@ export const URLs = Object.freeze({
 
   // Account management
   CHANGE_PASSWORD: BASE_URL + "/account/password/change",
-  EMAIL: BASE_URL + "/account/email",
 
   // Auth: Basics
   LOGIN: BASE_URL + "/auth/login",
@@ -84,11 +83,11 @@ async function request(
     options.headers["Content-Type"] = "application/json";
   }
 
-  const resp = await fetch(path, options);
   let msg;
   try {
+    const resp = await fetch(path, options);
     msg = await resp.json();
-  } catch {
+  } catch (err) {
     msg = {
       status: 500,
       errors: [

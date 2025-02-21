@@ -77,7 +77,7 @@ export default function ResetPassword() {
     confirmationRes.content?.status &&
     confirmationRes.content?.status === 401
   ) {
-    return <Navigate to="/account/login" />;
+    return <Navigate to="/account/login?password=confirmed" />;
   }
 
   if (!keyResponse) {
@@ -89,7 +89,7 @@ export default function ResetPassword() {
       <Paper radius="md" p="md">
         {keyResponse.status === 200 ? (
           <form onSubmit={form.onSubmit(handleFormSubmit)}>
-            <Text>
+            <Text style={{ textAlign: "center" }}>
               Set new password for your{" "}
               <Text td="underline" c="blue" span>
                 {keyResponse.data.user?.email}

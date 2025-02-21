@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
         </form>
       ) : (
         <Stack justify="center" style={{ textAlign: "center" }} align="center">
-          <IconCircleCheckFilled size={80} style={{ color: "green" }} />
+          <IconCircleCheckFilled size={80} style={{ color: "#326950" }} />
           <Text>
             We have sent a password reset email to{" "}
             <strong>{form.values.email}</strong>. Please head to your inbox.

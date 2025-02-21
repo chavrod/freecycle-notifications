@@ -1,17 +1,36 @@
 import { useState } from "react";
 
-import { TextInput, Text, Button, PasswordInput, Group } from "@mantine/core";
+import {
+  TextInput,
+  Text,
+  Button,
+  PasswordInput,
+  Group,
+  Notification,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { IconCheck } from "@tabler/icons-react";
 
 import { login, formatAuthErrors } from "../auth/api";
 import { AuthFlow } from "../auth/AuthContext";
 import CentredFlexPaper from "../components/CenteredFlexPaper";
 
+function useQuery() {
+  const { search } = useLocation();
+  return new URLSearchParams(search);
+}
+
 function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const query = useQuery();
+  const isEmailVerified =
+    query.get("email") && query.get("email") && "verified";
+  const isPasswordConfirmed =
+    query.get("password") && query.get("password") && "confirmed";
 
   const form = useForm({
     initialValues: {
@@ -70,6 +89,29 @@ function LoginForm() {
 
   return (
     <CentredFlexPaper title="Login">
+      {(isEmailVerified && !isPasswordConfirmed) ||
+      (!isEmailVerified && isPasswordConfirmed) ? (
+        <Notification
+          icon={<IconCheck size="1.2rem" />}
+          withCloseButton={false}
+          color="#326950"
+          title={`Great! Your ${
+            isPasswordConfirmed
+              ? "password has been changed."
+              : "email is confirmed."
+          }`}
+          mb="md"
+          withBorder
+          sx={{ boxShadow: "none" }}
+        >
+          {`Please login with the ${
+            isPasswordConfirmed ? "new password" : "verified email"
+          }`}
+        </Notification>
+      ) : (
+        <></>
+      )}
+
       <form onSubmit={form.onSubmit(handleFormSubmit)}>
         <TextInput
           id="login_email"
@@ -89,7 +131,7 @@ function LoginForm() {
           disabled={isLoading}
         />
         {error && (
-          <Text size="sm" color="red" mt="md">
+          <Text size="sm" c="#fb8080" mt="md">
             {error}
           </Text>
         )}

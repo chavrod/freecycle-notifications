@@ -46,7 +46,7 @@ export default function VerifyEmail() {
     confirmationRes.content &&
     [200, 401].includes(confirmationRes.content?.status)
   ) {
-    return <Navigate to="/account/email" />;
+    return <Navigate to="/account/login?email=verified" />;
   }
   if (!verification) {
     return <></>;

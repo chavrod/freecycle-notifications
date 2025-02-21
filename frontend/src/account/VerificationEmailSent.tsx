@@ -9,7 +9,7 @@ export default function VerificationEmailSent() {
     <CentredFlexPaper>
       <IconCircleCheckFilled
         size={80}
-        style={{ color: "green", marginBottom: "10px" }}
+        style={{ color: "#326950", marginBottom: "10px" }}
       />
       <Title order={2}>You are registered!</Title>
       {/* TODO: Tell them what email address to confirm... */}

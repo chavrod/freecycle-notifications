@@ -48,6 +48,11 @@ function Signup() {
       if (res.status === 400) {
         form.setErrors(formatAuthErrors(res.errors, { password: "password1" }));
         // 401 indicates that email verificaiton is required
+      } else if (res.status == 403) {
+        setError(
+          res.errors?.[0]?.message ||
+            "Unexpected error. Please try again later or contact help@pingcycle.io"
+        );
       } else if (res.status == 401) {
         setIsRegistrationSubmitted(true);
       } else {
@@ -96,7 +101,7 @@ function Signup() {
             Signup
           </Button>
           {error && (
-            <Text size="sm" color="red" mt="md">
+            <Text size="sm" c="red" mt="md">
               {error}
             </Text>
           )}
@@ -111,7 +116,7 @@ function Signup() {
           >
             <IconCircleCheckFilled
               size={80}
-              style={{ color: "green", marginBottom: "10px" }}
+              style={{ color: "#326950", marginBottom: "10px" }}
             />
             <Title order={2}>You are registered!</Title>
             <Text>

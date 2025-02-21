@@ -24,6 +24,8 @@ import ResetPassword, {
 import Root from "./Root";
 import Home from "./Home";
 import { useConfig } from "./auth/hooks";
+import ErrorBoundary from "./components/ErrorBoundary";
+import DashboardPage from "./Dashboard";
 
 function createRouter() {
   return createBrowserRouter([
@@ -34,10 +36,19 @@ function createRouter() {
           <Root />
         </AuthChangeRedirector>
       ),
+      errorElement: <ErrorBoundary />,
       children: [
         {
           path: "/",
           element: <Home />,
+        },
+        {
+          path: "/dashboard",
+          element: (
+            <AuthenticatedRoute>
+              <DashboardPage />
+            </AuthenticatedRoute>
+          ),
         },
         {
           path: "/account/login",
@@ -47,10 +58,6 @@ function createRouter() {
             </AnonymousRoute>
           ),
         },
-        // {
-        //   path: "/account/logout",
-        //   element: <Logout />,
-        // },
         {
           path: "/account/signup",
           element: (
@@ -77,7 +84,7 @@ function createRouter() {
           ),
         },
         {
-          path: "/account/password/reset/key/:key",
+          path: "/account/password/key/:key",
           element: (
             <AnonymousRoute>
               <ResetPassword />
@@ -85,14 +92,6 @@ function createRouter() {
           ),
           loader: resetPasswordLoader,
         },
-        // {
-        //   path: "/account/password/change",
-        //   element: (
-        //     <AuthenticatedRoute>
-        //       <ChangePassword />
-        //     </AuthenticatedRoute>
-        //   ),
-        // },
       ],
     },
   ]);
