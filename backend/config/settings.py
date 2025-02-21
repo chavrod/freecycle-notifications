@@ -15,9 +15,12 @@ SITE_ID = 1
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
 # Load config
 with open("/etc/pingcycle_config.json") as f:
     CONFIG = json.loads(f.read())
+
+APP_NAME = CONFIG["APP_NAME"]
 
 ENV = CONFIG["ENV"]
 if ENV == "DEV":
@@ -186,8 +189,23 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Testing email
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    pass
+    # TODO: Setup
+    # ANYMAIL = {"POSTMARK_SERVER_TOKEN": CONFIG["POSTMARK_API_KEY"]}
+    # EMAIL_BACKEND = "anymail.backends.postmark.EmailBackend"
+    # DEFAULT_FROM_EMAIL = "dmitry@bookiebase.ie"
+
 
 # Auth
+HEADLESS_ONLY = True
+AUTHENTICATION_BACKENDS = (
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+)
 ACCOUNT_ADAPTER = "pingcycle.apps.users.adapters.CustomAccountAdapter"
 if ENV == "DEV":
     HEADLESS_FRONTEND_URLS = {
@@ -195,7 +213,6 @@ if ENV == "DEV":
         "account_reset_password": "http://127.0.0.1:3000/account/password/reset",
         "account_reset_password_from_key": "http://127.0.0.1:3000/account/password/key/{key}",
         "account_signup": "/account/signup",
-        "socialaccount_login_error": "/account/provider/callback",
     }
 else:
     HEADLESS_FRONTEND_URLS = {
@@ -203,7 +220,6 @@ else:
         "account_reset_password": "account/password/reset",
         "account_reset_password_from_key": "/account/password/reset/key/{key}",
         "account_signup": "/account/signup",
-        "socialaccount_login_error": "/account/provider/callback",
     }
 # Use email for authentication instead of usernames.
 ACCOUNT_LOGIN_METHODS = {"email"}
