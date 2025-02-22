@@ -7,8 +7,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 
-from .models import UserSelectedKeywords
-from .serializers import UserSelectedKeywordsSerializer
+from .models import Keyword
+from .serializers import KeywordsSerializer, KeywordsCreationSerializer
 
 
 @csrf_protect
@@ -19,44 +19,31 @@ def ping(request):
     return response
 
 
-class UserSelectedKeywordsViewSet(
+class KeywordsViewSet(
     viewsets.GenericViewSet,
 ):
     permission_classes = [IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
-        user_keywords = UserSelectedKeywords.objects.filter(user=request.user)
-        serializer = UserSelectedKeywordsSerializer(user_keywords, many=True)
-        return Response(serializer.data)
+        user_keywords = Keyword.objects.filter(user=request.user)
+        serializer = KeywordsSerializer(user_keywords, many=True)
+        print(" serializer.data", serializer.data)
+        return Response({"keywords": serializer.data})
 
     def create(self, request, *args, **kwargs):
-        serializer = UserSelectedKeywordsSerializer(data=request.data)
+        serializer = KeywordsCreationSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            UserSelectedKeywords.objects.create(
+            Keyword.objects.create(
                 name=serializer.validated_data["name"], user=request.user
             )
             return Response(status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk=None, *args, **kwargs):
         try:
-            keyword = UserSelectedKeywords.objects.get(pk=pk, user=request.user)
+            keyword = Keyword.objects.get(pk=pk, user=request.user)
             keyword.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
-        except UserSelectedKeywords.DoesNotExist:
+        except Keyword.DoesNotExist:
             return Response(
                 {"error": "Keyword not found."}, status=status.HTTP_404_NOT_FOUND
             )
-
-    def update(self, request, pk=None, *args, **kwargs):
-        try:
-            keyword = UserSelectedKeywords.objects.get(pk=pk, user=request.user)
-        except UserSelectedKeywords.DoesNotExist:
-            return Response(
-                {"error": "Keyword not found."}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        serializer = UserSelectedKeywordsSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            keyword.name = serializer.validated_data["name"]
-            keyword.save(update_fields=["name"])
-            return Response(status=status.HTTP_200_OK)

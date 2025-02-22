@@ -6,9 +6,9 @@ from rest_framework.exceptions import ValidationError
 from config.settings import MAX_KEYWORDS_PER_USER
 
 
-class UserSelectedKeywordsManager(models.Manager):
+class KeywordManager(models.Manager):
     def create(self, name, user):
-        keyword_count = UserSelectedKeywords.objects.filter(user=user).count()
+        keyword_count = Keyword.objects.filter(user=user).count()
 
         if keyword_count >= MAX_KEYWORDS_PER_USER:
             raise ValidationError(
@@ -21,11 +21,16 @@ class UserSelectedKeywordsManager(models.Manager):
         return super().create(name=name, user=user)
 
 
-class UserSelectedKeywords(models.Model):
-    objects = UserSelectedKeywordsManager()
+class Keyword(models.Model):
+    objects = KeywordManager()
 
     name = models.CharField(max_length=200)
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="keywords",
+        on_delete=models.CASCADE,
+    )
+    created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
@@ -44,14 +49,15 @@ class NotifiedProduct(models.Model):
         SENT = "SENT"
         SENDING_FAILED = "SENDING_FAILED"
 
+    product_name = models.CharField(max_length=200)
     status = models.CharField(max_length=30, choices=Status.choices)
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     external_id = models.IntegerField()
-    name = models.CharField(max_length=200)
-    description = models.TextField()
+    description = models.TextField(null=True)
     location = models.CharField(max_length=200)
-    sublocation = models.CharField(max_length=200)
+    sublocation = models.CharField(max_length=200, null=True)
     created = models.DateTimeField(auto_now_add=True)
+    keywords = models.ManyToManyField(Keyword, related_name="notified_products")
+    img = models.URLField(null=True)
     # TODO: img url for a nice preview??
 
     def get_full_url(self):

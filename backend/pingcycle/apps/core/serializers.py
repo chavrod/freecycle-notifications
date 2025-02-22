@@ -1,11 +1,17 @@
 from rest_framework import serializers
 
-from .models import UserSelectedKeywords
+from .models import Keyword
 
 
-class UserSelectedKeywordsSerializer(serializers.Serializer):
+class KeywordsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Keyword
+        exclude = ["user"]
+
+
+class KeywordsCreationSerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=True, allow_blank=False)
 
     class Meta:
-        model = UserSelectedKeywords
+        model = Keyword
         fields = ["name"]
