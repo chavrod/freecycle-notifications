@@ -68,12 +68,12 @@ function LoginForm() {
         setError(
           verifyEmailPending
             ? "You must verify your email first"
-            : "Unexpected error. Please try again later or contact help@pingcycle.io"
+            : "Unexpected error. Please try again later or contact help@pingcycle.org"
         );
       } else {
         // TODO: REPORT TO SENTRY
         setError(
-          "Unexpected error. Please try again later or contact help@pingcycle.io"
+          "Unexpected error. Please try again later or contact help@pingcycle.org"
         );
       }
     } catch (err: any) {

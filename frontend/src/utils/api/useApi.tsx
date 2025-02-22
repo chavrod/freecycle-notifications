@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { showNotification } from "@mantine/notifications";
+import { IconX } from "@tabler/icons-react";
+
+import { isApiError } from "./apiClient";
 
 export type Params = { [name: string]: any };
 
@@ -26,36 +29,46 @@ function useApi<DataType>({
   const [loading, setLoading] = useState(false);
 
   const request = async () => {
-    if (apiFunc === undefined) return;
-    setLoading(true);
-    const res = await apiFunc();
-    setLoading(false);
-    if (res.ok) {
-      const data = res.data as { [unpackName: string]: DataType };
-      const unpacked = data[unpackName];
-      setData(unpacked);
+    try {
+      if (apiFunc === undefined) return;
+      setLoading(true);
+      const res = await apiFunc();
+      const data = res[unpackName] as DataType;
+      setData(data);
       setError(false);
-    } else {
+    } catch (e) {
+      let errorMessage;
+      if (isApiError(e)) {
+        errorMessage = e.data;
+      } else {
+        // TODO: REPORT TO SENTRY
+        console.error("An unexpected error occurred:", e);
+      }
+      setData(defaultData);
+      setError(true);
       showNotification({
-        message: capitalize(res.problem.replaceAll("_", " ")),
+        message:
+          typeof errorMessage === "string"
+            ? errorMessage
+            : "Error fetching data",
         color: "red",
         title: "Error",
         icon: <IconX size={18} />,
       });
-      setData(defaultData);
-      setError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    request();
+  }, []);
+
   return {
     data,
-    setData,
     error,
     loading,
     refresh: request,
-    setLoading,
-    params,
-    setParams,
   };
 }
 

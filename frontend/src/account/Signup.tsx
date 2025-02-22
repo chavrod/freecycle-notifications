@@ -51,20 +51,20 @@ function Signup() {
       } else if (res.status == 403) {
         setError(
           res.errors?.[0]?.message ||
-            "Unexpected error. Please try again later or contact help@pingcycle.io"
+            "Unexpected error. Please try again later or contact help@pingcycle.org"
         );
       } else if (res.status == 401) {
         setIsRegistrationSubmitted(true);
       } else {
         // TODO: REPORT UNKNOW ERROR TO SENTRY
         setError(
-          "Unexpected error. Please try again later or contact help@pingcycle.io"
+          "Unexpected error. Please try again later or contact help@pingcycle.org"
         );
       }
     } catch (error: any) {
       // TODO: REPORT UNKNOW ERROR TO SENTRY
       setError(
-        "Unexpected error. Please try again later or contact help@pingcycle.io"
+        "Unexpected error. Please try again later or contact help@pingcycle.org"
       );
     } finally {
       setIsLoading(false);
