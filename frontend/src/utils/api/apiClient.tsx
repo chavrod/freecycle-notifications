@@ -1,3 +1,5 @@
+import { STANDARD_ERROR_MESSAGE } from "../constants";
+
 type RequestOptions = Omit<RequestInit, "body"> & { body?: any };
 
 interface ApiClient {
@@ -7,15 +9,15 @@ interface ApiClient {
 }
 
 export type ApiError = {
-  data: string | object | null;
+  data: object | string;
   statusCode: number;
 };
 
 export function isApiError(error: any): error is ApiError {
   return (
     error &&
-    typeof error.message === "string" &&
-    typeof error.status === "number"
+    (typeof error.data === "object" || typeof error.data === "string") &&
+    typeof error.statusCode === "number"
   );
 }
 
@@ -41,13 +43,15 @@ const createApiClient = (appPath?: string): ApiClient => {
     if (!response.ok) {
       let errorData = null;
       try {
-        // Try to parse JSON response
         errorData = await response.json();
       } catch {
-        // Fallback to response text if JSON parsing fails
-        errorData = await response.text();
+        // TODO: REPORT TO SENTRY
+        errorData = STANDARD_ERROR_MESSAGE;
       }
-      throw { data: errorData, statusCode: response.status };
+      throw {
+        data: errorData,
+        statusCode: response.status,
+      };
     }
 
     return await response.json();
