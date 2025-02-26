@@ -6,6 +6,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useDisclosure } from "@mantine/hooks";
 
+import { STANDARD_ERROR_MESSAGE } from "../utils/constants";
 import PasswordStrengthInput from "../auth/PasswordStrengthInput";
 import { getPasswordReset, resetPassword, formatAuthErrors } from "../auth/api";
 import { AuthRes } from "../auth/AuthContext";
@@ -55,8 +56,7 @@ export default function ResetPassword() {
         // TODO: REPORT TO SENTRY
         notifications.show({
           title: "Server Error!",
-          message:
-            "Unexpected error. Please try again later or contact help@pingcycle.org",
+          message: STANDARD_ERROR_MESSAGE,
           color: "red",
         });
       }

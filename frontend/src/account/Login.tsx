@@ -13,6 +13,7 @@ import { notifications } from "@mantine/notifications";
 import { Link, useLocation } from "react-router-dom";
 import { IconCheck } from "@tabler/icons-react";
 
+import { STANDARD_ERROR_MESSAGE } from "../utils/constants";
 import { login, formatAuthErrors } from "../auth/api";
 import { AuthFlow } from "../auth/AuthContext";
 import CentredFlexPaper from "../components/CenteredFlexPaper";
@@ -68,13 +69,11 @@ function LoginForm() {
         setError(
           verifyEmailPending
             ? "You must verify your email first"
-            : "Unexpected error. Please try again later or contact help@pingcycle.org"
+            : STANDARD_ERROR_MESSAGE
         );
       } else {
         // TODO: REPORT TO SENTRY
-        setError(
-          "Unexpected error. Please try again later or contact help@pingcycle.org"
-        );
+        setError(STANDARD_ERROR_MESSAGE);
       }
     } catch (err: any) {
       notifications.show({

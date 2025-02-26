@@ -4,6 +4,7 @@ import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { IconCircleCheckFilled } from "@tabler/icons-react";
 
+import { STANDARD_ERROR_MESSAGE } from "../utils/constants";
 import { signUp, formatAuthErrors } from "../auth/api";
 import PasswordStrengthInput from "../auth/PasswordStrengthInput";
 import CentredFlexPaper from "../components/CenteredFlexPaper";
@@ -49,23 +50,16 @@ function Signup() {
         form.setErrors(formatAuthErrors(res.errors, { password: "password1" }));
         // 401 indicates that email verificaiton is required
       } else if (res.status == 403) {
-        setError(
-          res.errors?.[0]?.message ||
-            "Unexpected error. Please try again later or contact help@pingcycle.org"
-        );
+        setError(res.errors?.[0]?.message || STANDARD_ERROR_MESSAGE);
       } else if (res.status == 401) {
         setIsRegistrationSubmitted(true);
       } else {
         // TODO: REPORT UNKNOW ERROR TO SENTRY
-        setError(
-          "Unexpected error. Please try again later or contact help@pingcycle.org"
-        );
+        setError(STANDARD_ERROR_MESSAGE);
       }
     } catch (error: any) {
       // TODO: REPORT UNKNOW ERROR TO SENTRY
-      setError(
-        "Unexpected error. Please try again later or contact help@pingcycle.org"
-      );
+      setError(STANDARD_ERROR_MESSAGE);
     } finally {
       setIsLoading(false);
     }
