@@ -1,4 +1,5 @@
 import { STANDARD_ERROR_MESSAGE } from "../constants";
+import getClientSideCSRF from "../getCSRF";
 
 type RequestOptions = Omit<RequestInit, "body"> & { body?: any };
 
@@ -9,11 +10,11 @@ interface ApiClient {
 }
 
 export type ApiError = {
-  data: object | string;
+  data: Record<string, string | string[]>;
   statusCode: number;
 };
 
-export function isApiError(error: any): error is ApiError {
+export function isStandardApiError(error: any): error is ApiError {
   return (
     error &&
     (typeof error.data === "object" || typeof error.data === "string") &&
@@ -29,7 +30,9 @@ const createApiClient = (appPath?: string): ApiClient => {
     options: RequestOptions = {}
   ): Promise<any> => {
     const { body, ...rest } = options;
+    const csrfToken = (await getClientSideCSRF()) || "";
     const headers = {
+      "X-CSRFToken": csrfToken,
       "Content-Type": "application/json",
       ...rest.headers,
     };
@@ -71,3 +74,23 @@ const createApiClient = (appPath?: string): ApiClient => {
 };
 
 export default createApiClient;
+
+export function convertArrayValuesToStrings(
+  obj: Record<string, string | string[]> | string
+): Record<string, string> | string {
+  if (typeof obj == "string") return obj;
+
+  const result: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (Array.isArray(value)) {
+      // If the value is an array, join the elements
+      result[key] = value.join("; ");
+    } else {
+      // If the value is a string, use it directly
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
