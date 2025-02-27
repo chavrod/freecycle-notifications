@@ -45,7 +45,6 @@ export default function DashboardPage() {
     initialValues: {
       name: "",
     },
-
     validate: {
       name: (value) =>
         value.trim().length < 3 ? "3 letters minimum please." : null,
