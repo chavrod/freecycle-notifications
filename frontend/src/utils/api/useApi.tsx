@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons-react";
 
-import { isApiError } from "./apiClient";
+import { isStandardApiError, convertArrayValuesToStrings } from "./apiClient";
+import { STANDARD_ERROR_MESSAGE } from "../constants";
 
 export type Params = { [name: string]: any };
 
@@ -38,19 +39,21 @@ function useApi<DataType>({
       setError(false);
     } catch (e) {
       let errorMessage;
-      if (isApiError(e)) {
-        errorMessage = e.data;
+      // TODO: Refacotor this logic and document...
+      if (isStandardApiError(e)) {
+        const tempMessage = convertArrayValuesToStrings(e.data);
+        errorMessage =
+          typeof tempMessage === "string"
+            ? tempMessage
+            : Object.values(tempMessage).join("; ");
       } else {
         // TODO: REPORT TO SENTRY
-        console.error("An unexpected error occurred:", e);
+        errorMessage = STANDARD_ERROR_MESSAGE;
       }
       setData(defaultData);
       setError(true);
       showNotification({
-        message:
-          typeof errorMessage === "string"
-            ? errorMessage
-            : "Error fetching data",
+        message: errorMessage,
         color: "red",
         title: "Error",
         icon: <IconX size={18} />,
