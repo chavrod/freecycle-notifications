@@ -27,16 +27,18 @@ class KeywordsViewSet(
     def list(self, request, *args, **kwargs):
         user_keywords = Keyword.objects.filter(user=request.user)
         serializer = KeywordsSerializer(user_keywords, many=True)
-        print(" serializer.data", serializer.data)
         return Response({"keywords": serializer.data})
 
     def create(self, request, *args, **kwargs):
         serializer = KeywordsCreationSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            Keyword.objects.create(
+            keyword = Keyword.objects.create(
                 name=serializer.validated_data["name"], user=request.user
             )
-            return Response(status=status.HTTP_201_CREATED)
+            serializer = KeywordsSerializer(keyword)
+            return Response(
+                data={"keyword": serializer.data}, status=status.HTTP_201_CREATED
+            )
 
     def destroy(self, request, pk=None, *args, **kwargs):
         try:

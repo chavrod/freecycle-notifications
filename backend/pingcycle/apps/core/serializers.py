@@ -1,3 +1,5 @@
+import re
+
 from rest_framework import serializers
 
 from .models import Keyword
@@ -11,6 +13,11 @@ class KeywordsSerializer(serializers.ModelSerializer):
 
 class KeywordsCreationSerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=True, allow_blank=False)
+
+    def validate_name(self, value):
+        # Remove leading and trailing whitespaces, replace multiple spaces with one, and convert to lowercase
+        value = re.sub(r"\s+", " ", value.strip()).title()
+        return value
 
     class Meta:
         model = Keyword

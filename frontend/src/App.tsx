@@ -1,5 +1,7 @@
 import "@mantine/core/styles.css";
+import "@mantine/notifications/styles.css";
 import { MantineProvider } from "@mantine/core";
+import { Notifications } from "@mantine/notifications";
 import { emotionTransform, MantineEmotionProvider } from "@mantine/emotion";
 
 import { AuthContextProvider } from "./auth/AuthContext";
@@ -41,6 +43,7 @@ function App() {
         }}
       >
         <MantineEmotionProvider>
+          <Notifications position="top-right" />
           <RouterFn />
         </MantineEmotionProvider>
       </MantineProvider>

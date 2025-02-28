@@ -7,7 +7,7 @@ import { STANDARD_ERROR_MESSAGE } from "../constants";
 interface useApiSubmitProps {
   apiFunc?: (formData: any) => Promise<any>;
   form: UseFormReturnType<any, any>;
-  onSuccess: (res: Promise<any>) => void;
+  onSuccess: (res: any) => void;
 }
 
 const useApiSubmit = ({ apiFunc, form, onSuccess }: useApiSubmitProps) => {
@@ -18,8 +18,10 @@ const useApiSubmit = ({ apiFunc, form, onSuccess }: useApiSubmitProps) => {
   const handleSubmit = async (formData: typeof form.values) => {
     if (apiFunc === undefined) return;
     try {
+      setLoading(true);
       resetErrors();
       const res = await apiFunc(formData);
+      console.log("JSON RES: ", res);
       onSuccess(res);
     } catch (e) {
       if (!isStandardApiError(e)) {
@@ -30,10 +32,13 @@ const useApiSubmit = ({ apiFunc, form, onSuccess }: useApiSubmitProps) => {
       }
       const parsedErrors = convertArrayValuesToStrings(e.data);
       // Filter out keys that match the ones in the form
-      const nonFieldErrors = Object.entries(parsedErrors)
-        .filter(([key, _]) => form.getInputProps(key).value === undefined)
-        .map(([_, value]) => value)
-        .join("; ");
+      const nonFieldErrors =
+        typeof parsedErrors === "string"
+          ? parsedErrors
+          : Object.entries(parsedErrors)
+              .filter(([key, _]) => form.getInputProps(key).value === undefined)
+              .map(([_, value]) => value)
+              .join("; ");
       // Set errors
       setNonFieldErrors(nonFieldErrors);
       if (typeof parsedErrors !== "string") form.setErrors(parsedErrors);

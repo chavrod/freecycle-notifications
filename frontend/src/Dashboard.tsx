@@ -6,25 +6,24 @@ import {
   Group,
   ActionIcon,
   Button,
-  Modal,
-  TextInput,
+  Loader,
 } from "@mantine/core";
+import {
+  IconTrash,
+  IconBrandTelegram,
+  IconClock,
+  IconBellPlus,
+  IconKeyOff,
+} from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import TimeAgo from "javascript-time-ago";
 import en from "javascript-time-ago/locale/en";
 
 import { useUser } from "./auth/hooks";
 import useApi from "./utils/api/useApi";
-import useApiSubmit from "./utils/api/useApiSubmit";
 import coreApi from "./utils/api/coreApi";
 import { Keyword } from "./utils/api/api_types";
-import {
-  IconTrash,
-  IconBrandTelegram,
-  IconClock,
-  IconBellPlus,
-} from "@tabler/icons-react";
-import { useForm } from "@mantine/form";
+import AddKeywordModal from "./components/AddKeywordModal";
 
 export default function DashboardPage() {
   const [opened, { open, close }] = useDisclosure(false);
@@ -41,56 +40,16 @@ export default function DashboardPage() {
   });
   const keywordsData = keywordsRes.data;
 
-  const form = useForm({
-    initialValues: {
-      name: "",
-    },
-    validate: {
-      name: (value) =>
-        value.trim().length < 3 ? "3 letters minimum please." : null,
-    },
-  });
-
-  const { handleSubmit, loading, nonFieldErrors, resetAll } = useApiSubmit({
-    form: form,
-    apiFunc: (formData: typeof form.values) => coreApi.keywordsCreate(formData),
-    onSuccess: () => {
-      close();
-      resetAll();
-      // TODO: Potnetially just add new keyowrd to the top as oppose to refetching?
-      keywordsRes.refresh();
-    },
-  });
-
   return (
     <>
-      {/* Modal for Adding Keywords */}
-      <Modal
+      <AddKeywordModal
         opened={opened}
-        onClose={() => {
+        onClose={close}
+        onSuccess={() => {
+          keywordsRes.refresh();
           close();
-          resetAll();
         }}
-        title="Add new keyword"
-      >
-        {/* TODO: Refactor into its own component....  */}
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          <TextInput
-            {...form.getInputProps("name")}
-            label="Keyword"
-            placeholder="Enter a new keyword"
-            mb="md"
-          />
-          {nonFieldErrors && (
-            <Text size="sm" c="red" my="md">
-              {nonFieldErrors}
-            </Text>
-          )}
-          <Button type="submit" fullWidth loading={loading}>
-            Add Keyword
-          </Button>
-        </form>
-      </Modal>
+      />
       {/* Main Content */}
       <Stack align="center">
         <Paper my="md" p="md" w={{ base: "100%", xs: 400 }}>
@@ -110,7 +69,12 @@ export default function DashboardPage() {
           Add Keyword
         </Button>
 
-        {keywordsData.length > 0 ? (
+        {keywordsRes.loading ? (
+          <Group gap="md" mt="xl" style={{ height: "calc(100vh - 450px)" }}>
+            <Loader />
+            <Text c="grey">Loading Keywords...</Text>
+          </Group>
+        ) : keywordsData.length > 0 ? (
           keywordsData.map((keyword, index) => (
             <Paper my={5} p="md" w={{ base: "100%", xs: 400 }} key={index}>
               <Group justify="space-between" wrap="nowrap">
@@ -121,7 +85,10 @@ export default function DashboardPage() {
                     <Group gap={8}>
                       <IconClock color="grey" size={20} stroke={1.8} />
                       <Text c="grey">
-                        {timeAgo.format(new Date(keyword.created), "twitter")}
+                        {timeAgo.format(
+                          new Date(keyword.created),
+                          "twitter-minute-now"
+                        )}
                       </Text>
                     </Group>
 
@@ -141,7 +108,10 @@ export default function DashboardPage() {
             </Paper>
           ))
         ) : (
-          <></>
+          <Group gap="md" mt="xl" style={{ height: "calc(100vh - 450px)" }}>
+            <IconKeyOff size={36} color="grey" />
+            <Text c="grey">You have no keywrods</Text>
+          </Group>
         )}
       </Stack>
     </>
