@@ -232,3 +232,7 @@ TEMP_ALLOWED_EMAILS = CONFIG["TEMP_ALLOWED_EMAILS"]
 
 # Business logic
 MAX_KEYWORDS_PER_USER = CONFIG["MAX_KEYWORDS_PER_USER"]
+if not isinstance(MAX_KEYWORDS_PER_USER, int):
+    raise RuntimeError(
+        f"'MAX_KEYWORDS_PER_USER' needs to be an integer, but got: {MAX_KEYWORDS_PER_USER}"
+    )
