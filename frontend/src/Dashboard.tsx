@@ -25,7 +25,7 @@ import useApi from "./utils/api/useApi";
 import coreApi from "./utils/api/coreApi";
 import { Keyword } from "./utils/api/api_types";
 import AddKeywordModal from "./components/AddKeywordModal";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { STANDARD_ERROR_MESSAGE } from "./utils/constants";
 
 export default function DashboardPage() {
@@ -41,14 +41,20 @@ export default function DashboardPage() {
     unpackName: "keywords",
     defaultData: [],
   });
-  const keywordsData = keywordsRes.data;
+
+  const [keywordsData, setKeywordsData] = useState<Keyword[]>(keywordsRes.data);
+  useEffect(() => {
+    setKeywordsData(keywordsRes.data);
+  }, [JSON.stringify(keywordsRes.data)]);
 
   const [loadingIndices, setLoadingIndices] = useState<number[]>([]);
   const handleDelete = async (id: number, index: number, name: string) => {
     setLoadingIndices((prev) => [...prev, index]);
     try {
       await coreApi.keywordsDestroy(id.toString());
-      keywordsRes.refresh();
+      setKeywordsData((prevKeywords) =>
+        prevKeywords.filter((_, i) => i !== index)
+      );
       notifications.show({
         title: "Key removed",
         message: `🪦 Removed Key: ${name}`,
@@ -69,8 +75,8 @@ export default function DashboardPage() {
       <AddKeywordModal
         opened={opened}
         onClose={close}
-        onSuccess={() => {
-          keywordsRes.refresh();
+        onSuccess={(newKeyword) => {
+          setKeywordsData((prevKeywords) => [newKeyword, ...prevKeywords]);
           close();
         }}
       />

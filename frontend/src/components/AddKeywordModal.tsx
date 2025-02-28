@@ -4,6 +4,7 @@ import { notifications } from "@mantine/notifications";
 
 import useApiSubmit from "./../utils/api/useApiSubmit";
 import coreApi from "./../utils/api/coreApi";
+import { Keyword } from "../utils/api/api_types";
 
 export default function AddKeywordModal({
   opened,
@@ -12,7 +13,7 @@ export default function AddKeywordModal({
 }: {
   opened: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (keyword: Keyword) => void;
 }) {
   const form = useForm({
     initialValues: {
@@ -35,7 +36,7 @@ export default function AddKeywordModal({
         message: `🔑 New Keywrod Added: ${addKeywrodRes.keyword.name}`,
         color: "#326950",
       });
-      onSuccess();
+      onSuccess(addKeywrodRes.keyword);
     },
   });
 
