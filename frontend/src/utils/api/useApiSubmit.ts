@@ -21,7 +21,6 @@ const useApiSubmit = ({ apiFunc, form, onSuccess }: useApiSubmitProps) => {
       setLoading(true);
       resetErrors();
       const res = await apiFunc(formData);
-      console.log("JSON RES: ", res);
       onSuccess(res);
     } catch (e) {
       if (!isStandardApiError(e)) {

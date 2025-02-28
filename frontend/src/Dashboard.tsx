@@ -18,12 +18,15 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import TimeAgo from "javascript-time-ago";
 import en from "javascript-time-ago/locale/en";
+import { notifications } from "@mantine/notifications";
 
 import { useUser } from "./auth/hooks";
 import useApi from "./utils/api/useApi";
 import coreApi from "./utils/api/coreApi";
 import { Keyword } from "./utils/api/api_types";
 import AddKeywordModal from "./components/AddKeywordModal";
+import { useState } from "react";
+import { STANDARD_ERROR_MESSAGE } from "./utils/constants";
 
 export default function DashboardPage() {
   const [opened, { open, close }] = useDisclosure(false);
@@ -40,6 +43,27 @@ export default function DashboardPage() {
   });
   const keywordsData = keywordsRes.data;
 
+  const [loadingIndices, setLoadingIndices] = useState<number[]>([]);
+  const handleDelete = async (id: number, index: number, name: string) => {
+    setLoadingIndices((prev) => [...prev, index]);
+    try {
+      await coreApi.keywordsDestroy(id.toString());
+      keywordsRes.refresh();
+      notifications.show({
+        title: "Key removed",
+        message: `🪦 Removed Key: ${name}`,
+        color: "#326950",
+      });
+    } catch (e) {
+      notifications.show({
+        title: "Error occured!",
+        message: STANDARD_ERROR_MESSAGE,
+        color: "red",
+      });
+    } finally {
+      setLoadingIndices((prev) => prev.filter((i) => i !== index));
+    }
+  };
   return (
     <>
       <AddKeywordModal
@@ -100,7 +124,14 @@ export default function DashboardPage() {
                   </Group>
                 </Stack>
                 <Stack>
-                  <ActionIcon variant="subtle" color="#fb8080">
+                  <ActionIcon
+                    variant="subtle"
+                    color="#fb8080"
+                    loading={loadingIndices.includes(index)}
+                    onClick={() =>
+                      handleDelete(keyword.id, index, keyword.name)
+                    }
+                  >
                     <IconTrash />
                   </ActionIcon>
                 </Stack>
