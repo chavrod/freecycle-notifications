@@ -136,6 +136,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
@@ -201,6 +202,7 @@ else:
 
 
 # Auth
+AUTH_USER_MODEL = "users.CustomUser"
 HEADLESS_ONLY = True
 AUTHENTICATION_BACKENDS = (
     "django.contrib.auth.backends.ModelBackend",
@@ -222,11 +224,12 @@ else:
         "account_signup": "/account/signup",
     }
 # Use email for authentication instead of usernames.
-ACCOUNT_LOGIN_METHODS = {"email"}
-ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_LOGIN_METHODS = {"email"}
+
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "\u200B"
 TEMP_ALLOWED_EMAILS = CONFIG["TEMP_ALLOWED_EMAILS"]
 
