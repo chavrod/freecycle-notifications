@@ -49,3 +49,25 @@ class KeywordsViewSet(
             return Response(
                 {"error": "Keyword not found."}, status=status.HTTP_404_NOT_FOUND
             )
+
+
+class ChatsViewSet(
+    viewsets.GenericViewSet,
+):
+    permission_classes = [IsAuthenticated]
+
+    @action(methods=["post"], detail=False)
+    def link_chat(self, request, *args, **kwargs):
+        user = request.user
+        # check if user already has a linked phone
+
+        # generate uuid and temporary save on the model
+        # -> make sure that saved uuid is unique
+        # -> also add some state saying that we are currently linking
+        # -> the uuid is only valid for 30 seconds
+
+        # return this uuid (which will be used in the params)
+
+    @action(methods=["post"], detail=False)
+    def unlink_chat(self, request, *args, **kwargs):
+        pass

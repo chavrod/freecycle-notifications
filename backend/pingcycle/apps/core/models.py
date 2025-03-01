@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.db.models import Q
+from django.db.models.constraints import CheckConstraint
 
 from rest_framework.exceptions import ValidationError
 
@@ -82,3 +84,46 @@ class NotifiedProduct(models.Model):
 
     def __str__(self):
         return f"{self.name} in {self.sublocation} ({self.location}) - {self.created.strftime('%d-%m-%Y')} - {self.get_full_url()}"
+
+
+class Chat(models.Model):
+    class State(models.TextChoices):
+        SETUP = "SETUP"
+        ACTIVE = "ACTIVE"
+        INACTIVE = "INACTIVE"
+
+    class Provider(models.TextChoices):
+        TELEGRAM = "TELEGRAM"
+
+    temp_uuid = models.UUIDField(unique=True, null=True)
+    number = models.CharField(max_length=200, null=True, blank=False)  # or username
+    reference = models.CharField(
+        max_length=200, null=True, blank=False
+    )  # TODO: must be unique per provider
+    provider = models.CharField(max_length=10, choices=Provider.choices)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="messages", on_delete=models.PROTECT
+    )
+    state = models.CharField(max_length=30, choices=State.choices, default=State.SETUP)
+
+    class Meta:
+        constraints = [
+            CheckConstraint(
+                check=(
+                    (
+                        Q(state="ACTIVE")
+                        & Q(number__isnull=False)
+                        & Q(reference__isnull=False)
+                    )
+                    | (
+                        Q(state="INACTIVE")
+                        & Q(number__isnull=False)
+                        & Q(reference__isnull=False)
+                    )
+                ),
+                name="check_non_null_number_reference_when_active_or_inactive",
+            ),
+        ]
+
+    # TODO: add a constraint that only allows null values for SETUP state
+    # TODO: limit one user per chat + serilizer
