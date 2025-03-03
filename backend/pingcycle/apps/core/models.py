@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.conf import settings
 from django.db.models import Q
@@ -131,7 +133,7 @@ class ChatLinkingSession(models.Model):
     chat = models.ForeignKey(
         Chat, related_name="linking_sessions", on_delete=models.CASCADE
     )
-    temp_uuid = models.UUIDField(unique=True, null=True)
+    temp_uuid = models.UUIDField(default=uuid.uuid4, unique=True)
     temp_uuid_created = models.DateTimeField(auto_now_add=True)
 
 
