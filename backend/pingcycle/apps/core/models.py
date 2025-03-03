@@ -77,7 +77,6 @@ class NotifiedProduct(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     keywords = models.ManyToManyField(Keyword, related_name="notified_products")
     img = models.URLField(null=True)
-    # TODO: img url for a nice preview??
 
     def get_full_url(self):
         return f"https://www.freecycle.org/posts/{self.external_id}"
@@ -95,16 +94,16 @@ class Chat(models.Model):
     class Provider(models.TextChoices):
         TELEGRAM = "TELEGRAM"
 
-    temp_uuid = models.UUIDField(unique=True, null=True)
     number = models.CharField(max_length=200, null=True, blank=False)  # or username
     reference = models.CharField(
         max_length=200, null=True, blank=False
     )  # TODO: must be unique per provider
-    provider = models.CharField(max_length=10, choices=Provider.choices)
+    provider = models.CharField(max_length=20, choices=Provider.choices)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, related_name="messages", on_delete=models.PROTECT
     )
     state = models.CharField(max_length=30, choices=State.choices, default=State.SETUP)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
@@ -125,5 +124,31 @@ class Chat(models.Model):
             ),
         ]
 
-    # TODO: add a constraint that only allows null values for SETUP state
     # TODO: limit one user per chat + serilizer
+
+
+class ChatLinkingSession(models.Model):
+    chat = models.ForeignKey(
+        Chat, related_name="linking_sessions", on_delete=models.CASCADE
+    )
+    temp_uuid = models.UUIDField(unique=True, null=True)
+    temp_uuid_created = models.DateTimeField(auto_now_add=True)
+
+
+class Message(models.Model):
+    class Status(models.TextChoices):
+        QUEUED = "QUEUED"
+        SENT = "SENT"
+        SENDING_FAILED = "SENDING_FAILED"
+
+    notified_product = models.ForeignKey(
+        NotifiedProduct, related_name="messages", on_delete=models.CASCADE
+    )
+    chat = models.ForeignKey(Chat, related_name="messages", on_delete=models.CASCADE)
+    status = models.CharField(max_length=30, choices=Status.choices)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Message to {self.chat} with status {self.status}"
