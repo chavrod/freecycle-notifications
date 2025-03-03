@@ -126,8 +126,6 @@ class Chat(models.Model):
             ),
         ]
 
-    # TODO: limit one user per chat + serilizer
-
 
 class ChatLinkingSession(models.Model):
     chat = models.ForeignKey(
