@@ -1,13 +1,15 @@
 import uuid
+from datetime import timedelta
 
-from django.db import models
+from django.utils import timezone
+from django.db import models, IntegrityError
 from django.conf import settings
 from django.db.models import Q
 from django.db.models.constraints import CheckConstraint
 
 from rest_framework.exceptions import ValidationError
 
-from config.settings import MAX_KEYWORDS_PER_USER
+from config.settings import MAX_KEYWORDS_PER_USER, CHAT_TEMP_UUID_MAX_VALID_SECONDS
 
 
 class KeywordManager(models.Manager):
@@ -131,8 +133,77 @@ class ChatLinkingSession(models.Model):
     chat = models.ForeignKey(
         Chat, related_name="linking_sessions", on_delete=models.CASCADE
     )
-    temp_uuid = models.UUIDField(default=uuid.uuid4, unique=True)
-    temp_uuid_created = models.DateTimeField(auto_now_add=True)
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True)
+    uuid_created = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def get_or_create_custom(cls, user):
+        """
+        Gets or creates a valid uuid, that Telegram bot can use to uniquely
+        identify a user linking a chat.
+        """
+        # Check if user already has a linked chat
+        chat = Chat.objects.filter(user=user).first()
+        if chat:
+            if chat.state in [Chat.State.ACTIVE, Chat.State.INACTIVE]:
+                print("Found linked chat. Aborting")
+                raise ValidationError(
+                    {
+                        "detail": "You already have linked chat. You can unlink your existing chat."
+                    }
+                )
+            else:
+                print("Found unlinked chat.")
+                assert (
+                    chat.state == Chat.State.SETUP
+                ), "Expected chat to be in 'SETUP' state."
+        else:
+            print("No chats. Creating new chat")
+            chat = Chat.objects.create(
+                number=None,
+                reference=None,
+                provider=Chat.Provider.TELEGRAM,
+                user=user,
+                state=Chat.State.SETUP,
+            )
+
+        cutoff_time = timezone.now() - timedelta(
+            seconds=CHAT_TEMP_UUID_MAX_VALID_SECONDS
+        )
+        valid_linking_session: ChatLinkingSession = (
+            chat.linking_sessions.filter(uuid_created__gte=cutoff_time)
+            .order_by("-uuid_created")
+            .first()
+        )
+        if valid_linking_session:
+            print(
+                "Found Valid linking_session: ",
+                valid_linking_session.uuid,
+                valid_linking_session.uuid_created,
+            )
+            return valid_linking_session
+
+        print("Attempting to create linking_session")
+        new_session = None
+        attempts = 0
+        while new_session is None:
+            try:
+                if attempts > 4:  # Extremely unlikely to happen
+                    raise ValidationError(
+                        {"detail": "Something went wrong. Please try again."}
+                    )
+                    # TODO: SENTRY!
+                new_session = ChatLinkingSession.objects.create(chat=chat)
+                print(
+                    "Created linking_session: ",
+                    new_session.uuid,
+                )
+            except IntegrityError:
+                print("Failed to create session, reattempting.")
+                attempts += 1
+                continue
+
+        return new_session
 
 
 class Message(models.Model):
@@ -142,7 +213,7 @@ class Message(models.Model):
         SENDING_FAILED = "SENDING_FAILED"
 
     notified_product = models.ForeignKey(
-        NotifiedProduct, related_name="messages", on_delete=models.CASCADE
+        NotifiedProduct, related_name="messages", on_delete=models.SET_NULL, null=True
     )
     chat = models.ForeignKey(Chat, related_name="messages", on_delete=models.CASCADE)
     status = models.CharField(max_length=30, choices=Status.choices)

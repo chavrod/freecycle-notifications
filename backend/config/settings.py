@@ -233,9 +233,12 @@ ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "\u200B"
 TEMP_ALLOWED_EMAILS = CONFIG["TEMP_ALLOWED_EMAILS"]
 
-# Business logic
+##################
+# Business Logic #
+##################
 MAX_KEYWORDS_PER_USER = CONFIG["MAX_KEYWORDS_PER_USER"]
 if not isinstance(MAX_KEYWORDS_PER_USER, int):
     raise RuntimeError(
         f"'MAX_KEYWORDS_PER_USER' needs to be an integer, but got: {MAX_KEYWORDS_PER_USER}"
     )
+CHAT_TEMP_UUID_MAX_VALID_SECONDS = 20

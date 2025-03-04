@@ -60,64 +60,12 @@ class ChatsViewSet(
 ):
     permission_classes = [IsAuthenticated]
 
-    # TODO: Move heavy logic into model???
     @action(methods=["post"], detail=False)
     def link_chat(self, request, *args, **kwargs):
-        print("Request to LINK CHAT. Checking for existing chats...")
-        user = request.user
-        # Check if user already has a linked chat
-        chat = Chat.objects.filter(user=user).first()
-        if chat and chat.state in [Chat.State.ACTIVE, Chat.State.INACTIVE]:
-            print("Found linked chat. Aborting")
-            return Response(
-                {
-                    "detail": "You already have linked chat. You can unlink your existing chat."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        assert chat.state == Chat.State.SETUP, "Expected chat to be in 'SETUP' state."
-        print("No linked chats. Continue")
-        # TODO: move to settings
-        CHAT_TEMP_UUID_MAX_VALID_SECONDS = 20
-        cutoff_time = timezone.now() - timedelta(
-            seconds=CHAT_TEMP_UUID_MAX_VALID_SECONDS
-        )
-        valid_linking_session: ChatLinkingSession = (
-            chat.linking_sessions.filter(
-                temp_uuid__is_null=False, temp_uuid_created__gte=cutoff_time
-            )
-            .order_by("-temp_uuid_created")
-            .first()
-        )
-        if valid_linking_session:
-            print(
-                "Found Valid linking_session: ",
-                valid_linking_session.temp_uuid,
-                valid_linking_session.temp_uuid_created,
-            )
-            return Response(
-                data={"linking_session": valid_linking_session},
-                status=status.HTTP_200_OK,
-            )
-
-        # Ensure we do not get duplicate uuid.
-        # TODO: Test + max attempts?? Is there better way? Or better uuid?
-        print("Attempting to create linking_session")
-        new_session = None
-        while new_session is None:
-            try:
-                new_session = ChatLinkingSession.objects.create(chat=chat)
-                print(
-                    "Created linking_session: ",
-                    new_session.temp_uuid,
-                )
-            except IntegrityError:
-                print("Failed to create session, reattempting.")
-                # TODO: Log!
-                continue
-
+        print("Request to LINK CHAT.")
+        linking_session = ChatLinkingSession.get_or_create_custom(user=request.user)
         return Response(
-            data={"linking_session": new_session},
+            data={"linking_session": linking_session},
             status=status.HTTP_200_OK,
         )
 
