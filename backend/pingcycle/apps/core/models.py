@@ -1,5 +1,6 @@
 import uuid
 from datetime import timedelta
+from typing import Optional
 
 from django.utils import timezone
 from django.db import models, IntegrityError
@@ -109,6 +110,18 @@ class Chat(models.Model):
     state = models.CharField(max_length=30, choices=State.choices, default=State.SETUP)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def get_valid_linking_session(self) -> Optional["ChatLinkingSession"]:
+        assert self.state == Chat.State.SETUP, "Expected chat to be in 'SETUP' state."
+
+        cutoff_time = timezone.now() - timedelta(
+            seconds=CHAT_TEMP_UUID_MAX_VALID_SECONDS
+        )
+        return (
+            self.linking_sessions.filter(uuid_created__gte=cutoff_time)
+            .order_by("-uuid_created")
+            .first()
+        )
+
     class Meta:
         constraints = [
             CheckConstraint(
@@ -123,6 +136,7 @@ class Chat(models.Model):
                         & Q(number__isnull=False)
                         & Q(reference__isnull=False)
                     )
+                    | Q(state="SETUP")
                 ),
                 name="check_non_null_number_reference_when_active_or_inactive",
             ),
@@ -146,19 +160,12 @@ class ChatLinkingSession(models.Model):
         chat = Chat.objects.filter(user=user).first()
         if chat:
             if chat.state in [Chat.State.ACTIVE, Chat.State.INACTIVE]:
-                print("Found linked chat. Aborting")
                 raise ValidationError(
                     {
-                        "detail": "You already have linked chat. You can unlink your existing chat."
+                        "detail": "You already have a linked chat. You can unlink your existing chat."
                     }
                 )
-            else:
-                print("Found unlinked chat.")
-                assert (
-                    chat.state == Chat.State.SETUP
-                ), "Expected chat to be in 'SETUP' state."
         else:
-            print("No chats. Creating new chat")
             chat = Chat.objects.create(
                 number=None,
                 reference=None,
@@ -167,23 +174,10 @@ class ChatLinkingSession(models.Model):
                 state=Chat.State.SETUP,
             )
 
-        cutoff_time = timezone.now() - timedelta(
-            seconds=CHAT_TEMP_UUID_MAX_VALID_SECONDS
-        )
-        valid_linking_session: ChatLinkingSession = (
-            chat.linking_sessions.filter(uuid_created__gte=cutoff_time)
-            .order_by("-uuid_created")
-            .first()
-        )
+        valid_linking_session = chat.get_valid_linking_session()
         if valid_linking_session:
-            print(
-                "Found Valid linking_session: ",
-                valid_linking_session.uuid,
-                valid_linking_session.uuid_created,
-            )
             return valid_linking_session
 
-        print("Attempting to create linking_session")
         new_session = None
         attempts = 0
         while new_session is None:
@@ -194,10 +188,6 @@ class ChatLinkingSession(models.Model):
                     )
                     # TODO: SENTRY!
                 new_session = ChatLinkingSession.objects.create(chat=chat)
-                print(
-                    "Created linking_session: ",
-                    new_session.uuid,
-                )
             except IntegrityError:
                 print("Failed to create session, reattempting.")
                 attempts += 1

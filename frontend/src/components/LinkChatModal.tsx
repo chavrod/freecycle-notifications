@@ -30,7 +30,7 @@ export default function LinkChatModal({
   } = useApiAction({
     apiFunc: coreApi.linkChat,
     onSuccess: (linkingSessionRes) => {
-      const linkingSessionUuid = linkingSessionRes.data.linking_session;
+      const linkingSessionUuid = linkingSessionRes.linking_session;
       console.log("linkingSessionUuid: ", linkingSessionUuid);
     },
   });

@@ -37,7 +37,7 @@ export default function DashboardPage() {
   const [
     openedChatLinkModal,
     { open: openChatLinkModal, close: closeChatLinkModal },
-  ] = useDisclosure(true);
+  ] = useDisclosure(false);
 
   TimeAgo.addLocale(en);
   const timeAgo = new TimeAgo("en-US");

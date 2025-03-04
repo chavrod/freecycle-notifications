@@ -65,7 +65,7 @@ class ChatsViewSet(
         print("Request to LINK CHAT.")
         linking_session = ChatLinkingSession.get_or_create_custom(user=request.user)
         return Response(
-            data={"linking_session": linking_session},
+            data={"linking_session": linking_session.uuid},
             status=status.HTTP_200_OK,
         )
 
