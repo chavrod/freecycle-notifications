@@ -1,65 +1,57 @@
-import { UseFormReturnType } from "@mantine/form";
 import { useState } from "react";
 
 import { isStandardApiError, convertArrayValuesToStrings } from "./apiClient";
 import { STANDARD_ERROR_MESSAGE } from "../constants";
 
 interface useApiSubmitProps {
-  apiFunc?: (formData: any) => Promise<any>;
-  form: UseFormReturnType<any, any>;
+  apiFunc?: () => Promise<any>;
   onSuccess: (res: any) => void;
 }
 
 /**
- * Used when a form is sent as part of a POST request to backend
+ * Used for simple POST requests without a form
  */
-const useApiSubmit = ({ apiFunc, form, onSuccess }: useApiSubmitProps) => {
-  const [nonFieldErrors, setNonFieldErrors] = useState<
-    string | string[] | null
-  >(null);
+const useApiAction = ({ apiFunc, onSuccess }: useApiSubmitProps) => {
+  const [errors, setErrors] = useState<string | string[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const handleSubmit = async (formData: typeof form.values) => {
+  const handleSubmit = async () => {
     if (apiFunc === undefined) return;
     try {
       setLoading(true);
       resetErrors();
-      const res = await apiFunc(formData);
+      const res = await apiFunc();
       onSuccess(res);
     } catch (e) {
       if (!isStandardApiError(e)) {
         // TODO: REPORT TO SENTRY
         console.error("An unexpected error occurred:", e);
-        setNonFieldErrors(STANDARD_ERROR_MESSAGE);
+        setErrors(STANDARD_ERROR_MESSAGE);
         return;
       }
+      // Parse errors
       const parsedErrors = convertArrayValuesToStrings(e.data);
-      // Filter out keys that match the ones in the form
       const nonFieldErrors =
         typeof parsedErrors === "string"
           ? parsedErrors
           : Object.entries(parsedErrors)
-              .filter(([key, _]) => form.getInputProps(key).value === undefined)
               .map(([_, value]) => value)
               .join("; ");
       // Set errors
-      setNonFieldErrors(nonFieldErrors);
-      if (typeof parsedErrors !== "string") form.setErrors(parsedErrors);
+      setErrors(nonFieldErrors);
     } finally {
       setLoading(false);
     }
   };
 
   const resetErrors = () => {
-    setNonFieldErrors([]);
-    form.setErrors({});
+    setErrors([]);
   };
 
   const resetAll = () => {
     resetErrors();
-    form.reset();
   };
 
-  return { loading, handleSubmit, nonFieldErrors, resetAll };
+  return { loading, handleSubmit, errors, resetAll };
 };
 
-export default useApiSubmit;
+export default useApiAction;

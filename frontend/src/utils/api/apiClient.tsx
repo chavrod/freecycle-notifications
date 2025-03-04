@@ -5,7 +5,7 @@ type RequestOptions = Omit<RequestInit, "body"> & { body?: any };
 
 interface ApiClient {
   get(url: string, config?: RequestOptions): Promise<any>;
-  post(url: string, data: any, config?: RequestOptions): Promise<any>;
+  post(url: string, data?: any, config?: RequestOptions): Promise<any>;
   delete(url: string, config?: RequestOptions): Promise<any>;
 }
 

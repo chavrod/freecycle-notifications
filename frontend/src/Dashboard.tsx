@@ -25,11 +25,19 @@ import useApi from "./utils/api/useApi";
 import coreApi from "./utils/api/coreApi";
 import { Keyword } from "./utils/api/api_types";
 import AddKeywordModal from "./components/AddKeywordModal";
+import LinkChatModal from "./components/LinkChatModal";
 import { useEffect, useState } from "react";
 import { STANDARD_ERROR_MESSAGE } from "./utils/constants";
 
 export default function DashboardPage() {
-  const [opened, { open, close }] = useDisclosure(false);
+  const [
+    openedKewordModal,
+    { open: openKewordModal, close: closeKewordModal },
+  ] = useDisclosure(false);
+  const [
+    openedChatLinkModal,
+    { open: openChatLinkModal, close: closeChatLinkModal },
+  ] = useDisclosure(true);
 
   TimeAgo.addLocale(en);
   const timeAgo = new TimeAgo("en-US");
@@ -73,12 +81,17 @@ export default function DashboardPage() {
   return (
     <>
       <AddKeywordModal
-        opened={opened}
-        onClose={close}
+        opened={openedKewordModal}
+        onClose={closeKewordModal}
         onSuccess={(newKeyword) => {
           setKeywordsData((prevKeywords) => [newKeyword, ...prevKeywords]);
-          close();
+          closeKewordModal();
         }}
+      />
+      <LinkChatModal
+        opened={openedChatLinkModal}
+        onClose={closeChatLinkModal}
+        onSuccess={() => {}}
       />
       {/* Main Content */}
       <Stack align="center">
@@ -87,14 +100,16 @@ export default function DashboardPage() {
 
           <Group wrap="nowrap" justify="space-between" mt="sm">
             <Text>No Number Linked 📵</Text>
-            <Button variant="outline">Link Number</Button>
+            <Button onClick={openChatLinkModal} variant="outline">
+              Link Number
+            </Button>
           </Group>
         </Paper>
         {/* TODO: Disabled if no phone is added  - TELL USER TO LINK PHOE IN TOOLTIP */}
         <Button
           w={{ base: "100%", xs: 400 }}
           leftSection={<IconBellPlus />}
-          onClick={open}
+          onClick={openKewordModal}
         >
           Add Keyword
         </Button>
