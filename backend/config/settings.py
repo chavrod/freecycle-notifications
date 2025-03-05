@@ -27,11 +27,12 @@ if ENV == "DEV":
     DEBUG = True
 
     BASE_DOMAIN = "127.0.0.1"
+    BASE_ORIGIN = "http://127.0.0.1:3000"
     ALLOWED_HOSTS = ["*"]
     # CSRF
     CSRF_COOKIE_SECURE = False
     CSRF_COOKIE_DOMAIN = BASE_DOMAIN
-    CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1:3000"]
+    CSRF_TRUSTED_ORIGINS = [BASE_ORIGIN]
     # CORS
     CORS_ALLOW_ALL_ORIGINS = True
 
@@ -41,16 +42,20 @@ else:
     DEBUG = False
 
     BASE_DOMAIN = CONFIG["BASE_DOMAIN"]
+    # TODO: Check if BASE_ORIGIN makes sense
+    BASE_ORIGIN = f"https://{BASE_DOMAIN}"
+
+    # TODO: Check what is this ??
     HOST = CONFIG["HOST"]
     ALLOWED_HOSTS = [HOST]
     # CSRF
     CSRF_COOKIE_SECURE = True
     # TODO: Change once fixed
     CSRF_COOKIE_DOMAIN = f".{BASE_DOMAIN}"
-    CSRF_TRUSTED_ORIGINS = [f"https://{BASE_DOMAIN}"]
+    CSRF_TRUSTED_ORIGINS = [BASE_ORIGIN]
     # CORS
     CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGINS = [f"https://{BASE_DOMAIN}"]
+    CORS_ALLOWED_ORIGINS = [BASE_ORIGIN]
     # Session
     SESSION_COOKIE_SECURE = True
 
