@@ -99,6 +99,7 @@ class Chat(models.Model):
     class Provider(models.TextChoices):
         TELEGRAM = "TELEGRAM"
 
+    name = models.CharField(max_length=200, null=True, blank=False)
     number = models.CharField(max_length=200, null=True, blank=False)  # or username
     reference = models.CharField(
         max_length=200, null=True, blank=False
@@ -197,19 +198,17 @@ class ChatLinkingSession(models.Model):
 
 
 class Message(models.Model):
-    class Status(models.TextChoices):
-        QUEUED = "QUEUED"
-        SENT = "SENT"
-        SENDING_FAILED = "SENDING_FAILED"
+    class Sender(models.TextChoices):
+        BOT = "BOT"
+        USER = "USER"
 
     notified_product = models.ForeignKey(
         NotifiedProduct, related_name="messages", on_delete=models.SET_NULL, null=True
     )
     chat = models.ForeignKey(Chat, related_name="messages", on_delete=models.CASCADE)
-    status = models.CharField(max_length=30, choices=Status.choices)
-    content = models.TextField()
+    text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    sent_at = models.DateTimeField(null=True, blank=True)
+    sender = models.CharField(max_length=30, choices=Sender.choices)
 
     def __str__(self):
         return f"Message to {self.chat} with status {self.status}"
