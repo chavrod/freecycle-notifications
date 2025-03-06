@@ -27,6 +27,8 @@ if ENV == "DEV":
     DEBUG = True
 
     BASE_DOMAIN = "127.0.0.1"
+    WH_BASE_DOMAIN = CONFIG["DEV_WH_BASE_DOMAIN"]
+
     BASE_ORIGIN = "http://127.0.0.1:3000"
     ALLOWED_HOSTS = ["*"]
     # CSRF
@@ -42,6 +44,8 @@ else:
     DEBUG = False
 
     BASE_DOMAIN = CONFIG["BASE_DOMAIN"]
+    WH_BASE_DOMAIN = BASE_DOMAIN
+
     # TODO: Check if BASE_ORIGIN makes sense
     BASE_ORIGIN = f"https://{BASE_DOMAIN}"
 
