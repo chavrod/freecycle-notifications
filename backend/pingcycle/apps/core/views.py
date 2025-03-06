@@ -8,11 +8,12 @@ from django.db import IntegrityError
 
 from rest_framework import status, viewsets
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Keyword, Chat, ChatLinkingSession
 from .serializers import KeywordsSerializer, KeywordsCreationSerializer
+from pingcycle.tools import messaging_providers
 
 
 @csrf_protect
@@ -72,3 +73,17 @@ class ChatsViewSet(
     @action(methods=["post"], detail=False)
     def unlink_chat(self, request, *args, **kwargs):
         pass
+
+
+@api_view(["POST"])
+@permission_classes([])
+def messaging_provider_webhook(request, provider_key=None):
+    try:
+        provider = messaging_providers.get_messaging_provider(provider_key)
+        provider.handle_webhook(request)
+    except Exception as e:
+        print("MESSAGING WEBHOOK ERROR:", e)
+        # TODO: SENTRY
+        # capture_exception(e)
+
+    return Response(status=status.HTTP_200_OK)

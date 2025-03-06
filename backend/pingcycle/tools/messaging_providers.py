@@ -1,14 +1,21 @@
 from datetime import timedelta
 from typing import Optional
 import requests
+import uuid
 
+from django.utils import timezone
 from django.db import transaction
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from apps.core.models import Chat, Message
-from config.settings import BASE_ORIGIN
+from pingcycle.apps.core.models import Chat, Message, ChatLinkingSession
+from config.settings import (
+    BASE_ORIGIN,
+    WH_BASE_DOMAIN,
+    CONFIG,
+    CHAT_TEMP_UUID_MAX_VALID_SECONDS,
+)
 
 
 class MessagingProvider:
@@ -38,7 +45,7 @@ class MessagingProvider:
 
     def _get_chat(self, data) -> Chat | None:
         raise NotImplementedError(
-            f"{self.__class__.__name__}._get_chat() not implemented."
+            f"{self.__class__.__name__}._get_or_create_chat() not implemented."
         )
 
     def _get_ref(self, data) -> Optional[str]:
@@ -76,7 +83,7 @@ class MessagingProvider:
         chat = self._get_chat(data)
         # text = self._get_text(data)
 
-        # Any messages from unknown chats are ignored
+        # Any messages from unlinked chats are ignored
         if chat is None:
             return
 
@@ -110,6 +117,30 @@ class MessagingProvider:
     #     capture_message(
     #         f"Rate limit exceeded for chat ID {message.chat.id} with message: {message}"
     #     )
+
+    def _validate_uuid(self, potential_uuid):
+        # Validate if it's a proper UUID v4
+        try:
+            extracted_uuid = uuid.UUID(potential_uuid, version=4)
+        except (ValueError, AttributeError):
+            raise ValueError("Invalid UUID v4")
+
+        # Check if the UUID has the correct format (ensures it's not a valid UUID of a different version)
+        if str(extracted_uuid) != potential_uuid:
+            raise ValueError("Provided UUID is not a valid v4 UUID")
+
+        linking_session = ChatLinkingSession.objects.get(uuid=extracted_uuid)
+        print("Found Linking Session: ", linking_session)
+        uuid_created_time = linking_session.uuid_created
+
+        cutoff_time = timezone.now() - timedelta(
+            seconds=CHAT_TEMP_UUID_MAX_VALID_SECONDS
+        )
+        if uuid_created_time < cutoff_time:
+            # TODO: Tell customer to retry?? Calc diff seconds when testing
+            # TODO: As oppose to getting cutoff_time, just add change the field to invalidate_at_time!!!  (change in models also)
+            print("Token is invalid")
+        return extracted_uuid
 
 
 class Telegram(MessagingProvider):
@@ -152,6 +183,7 @@ class Telegram(MessagingProvider):
         return res.json()
 
     def handle_webhook(self, request: requests.Request):
+        print("RECEIVED MESSAGE")
         data = request.data
         message = data.get("message")
 
@@ -174,6 +206,25 @@ class Telegram(MessagingProvider):
     def _get_chat(self, data):
         message_from = data["message"]["from"]
         from_id = message_from["id"]
+
+        try:
+            existing_chat = Chat.objects.get(
+                reference=from_id,
+                provider=Chat.Provider.TELEGRAM,
+            )
+            return existing_chat
+        except Chat.DoesNotExist:
+            print("This is an unlinked chat")
+
+        # Check if the text starts with '/start'
+        message_text = data["text"]
+        print("message_text: ", message_text)
+        if not message_text.startswith("/start "):
+            raise ValueError("Message does not start with '/start'")
+        potential_uuid = message_text.split(" ", 1)[1]  # Get the part after '/start '
+        print("potential_uuid: ", potential_uuid)
+        valid_uuid = self._validate_uuid(potential_uuid)
+        print("valid_uuid: ", valid_uuid)
 
         with transaction.atomic():
             chat, created = Chat.objects.get_or_create(
@@ -222,7 +273,7 @@ class Telegram(MessagingProvider):
         """
         Default get_webhook_url cannot be called during init due to circular import
         """
-        return f"https://{HOST}/api/wh/messaging/TELEGRAM"
+        return f"https://{WH_BASE_DOMAIN}/api/wh/messaging/TELEGRAM"
 
     def _setup_webhook(self):
         set_response = self._post_api(
@@ -235,7 +286,7 @@ class Telegram(MessagingProvider):
 
 PROVIDERS = {}
 
-if Chat.Provider.TELEGRAM in MESSAGING_PROVIDERS:
+if Chat.Provider.TELEGRAM in CONFIG["MESSAGING_PROVIDERS"]:
     PROVIDERS[Chat.Provider.TELEGRAM] = Telegram()
 
 
