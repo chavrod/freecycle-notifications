@@ -67,7 +67,6 @@ export function AuthChangeRedirector({
   children: React.ReactNode;
 }) {
   const [auth, event] = useAuthChange();
-  console.log("AuthChangeRedirector: ", "auth: ", auth, "event: ", event);
   const location = useLocation();
   switch (event) {
     case AuthChangeEvent.LOGGED_OUT:
