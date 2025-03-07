@@ -42,18 +42,17 @@ export const AuthContextProvider: FC<AuthContextProviderProps> = ({
   children,
 }) => {
   console.log("AuthContextProvider render");
-  const [auth, setAuth] = useState<AuthRes | null>(null);
+  const [auth, setAuth] = useState<AuthRes | null | undefined>(undefined);
   const [config, setConfig] = useState<any | null>(null);
 
   useEffect(() => {
     console.log("UseEffect triggered");
     function onAuthChanged(e: CustomEvent) {
-      setAuth((auth: AuthRes | null) => {
+      setAuth((auth: AuthRes | null | undefined) => {
         if (typeof auth === "undefined") {
           console.log("Authentication status loaded");
         } else {
           console.log("Authentication status updated");
-          console.log("auth: ", auth);
         }
         return e.detail;
       });
@@ -84,12 +83,36 @@ export const AuthContextProvider: FC<AuthContextProviderProps> = ({
     };
   }, []);
 
+  const loading = typeof auth === "undefined" || config?.status !== 200;
+
   console.log("AUTH: ", auth);
   console.log("CONFIG: ", config);
 
   return (
     <AuthContext.Provider value={{ auth, config }}>
-      {children}
+      {loading ? (
+        <div
+          style={{
+            height: "100vh",
+            width: "100vw",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(196,213,191,255)",
+          }}
+        >
+          <img
+            src="/logo_main.svg"
+            alt=""
+            style={{
+              width: "120px",
+              height: "120px",
+            }}
+          ></img>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };
