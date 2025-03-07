@@ -24,6 +24,7 @@ import { useUser } from "./auth/hooks";
 import useApi from "./utils/api/useApi";
 import coreApi from "./utils/api/coreApi";
 import { Keyword, Chat } from "./utils/api/api_types";
+import { ChatProviderNamesAndEmoji } from "./utils/enum_records";
 import AddKeywordModal from "./components/AddKeywordModal";
 import LinkChatModal from "./components/LinkChatModal";
 import { useEffect, useState } from "react";
@@ -105,24 +106,19 @@ export default function DashboardPage() {
         <Paper my="md" p="md" w={{ base: "100%", xs: 400 }}>
           <Title order={3}>Welcome back, {user?.username}</Title>
           {chatsRes.loading ? (
-            <Group gap="md" mt="xl">
+            <Group gap="md" mt="xl" justify="center">
               <Loader />
-              <Text c="grey">Loading Keywords...</Text>
             </Group>
           ) : chatsData.length > 0 ? (
+            // TODO: This will not work with multiple chats....
             <Stack>
               {chatsData.map((chat, index) => (
-                <Group
-                  key={index}
-                  wrap="nowrap"
-                  justify="space-between"
-                  mt="sm"
-                >
-                  <Text>Linked Chat: {chat.provider}</Text>
-                  <Button onClick={openChatLinkModal} variant="outline">
-                    Manage Chat
-                  </Button>
-                </Group>
+                <Stack key={index}>
+                  <Group wrap="nowrap" justify="space-between" mt="sm">
+                    <Text>Chat Status</Text>
+                    <Text>{ChatProviderNamesAndEmoji[chat.state]}</Text>
+                  </Group>
+                </Stack>
               ))}
             </Stack>
           ) : (
@@ -134,14 +130,18 @@ export default function DashboardPage() {
             </Group>
           )}
         </Paper>
-        {/* TODO: Disabled if no phone is added  - TELL USER TO LINK PHOE IN TOOLTIP */}
-        <Button
-          w={{ base: "100%", xs: 400 }}
-          leftSection={<IconBellPlus />}
-          onClick={openKewordModal}
-        >
-          Add Keyword
-        </Button>
+        {!chatsRes.loading ? (
+          <Button
+            w={{ base: "100%", xs: 400 }}
+            leftSection={<IconBellPlus />}
+            onClick={openKewordModal}
+            disabled={chatsData.length == 0}
+          >
+            Add Keyword
+          </Button>
+        ) : (
+          <></>
+        )}
 
         {keywordsRes.loading ? (
           <Group gap="md" mt="xl" style={{ height: "calc(100vh - 450px)" }}>

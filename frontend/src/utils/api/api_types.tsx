@@ -4,12 +4,18 @@ export interface Keyword {
   created: string;
 }
 
+export enum ChatStateType {
+  SETUP = "SETUP",
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
+}
+
 export interface Chat {
   id: number;
   name: string;
   number: string;
   reference: string;
   provider: string;
-  state: string;
+  state: ChatStateType;
   created_at: string;
 }
