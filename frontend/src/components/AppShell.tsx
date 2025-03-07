@@ -25,7 +25,7 @@ export default function AppShellComponent({
       <AppShell.Header
         h="75px"
         style={{
-          backgroundColor: "rgba(196,213,191,255)", // Set the background color here
+          backgroundColor: "rgba(196,213,191,255)",
         }}
       >
         <Group
