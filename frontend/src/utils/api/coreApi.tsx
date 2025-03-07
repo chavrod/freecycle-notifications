@@ -8,13 +8,20 @@ const keywordsCreate = (data: {}) => coreApiClient.post(`keywords/`, data);
 
 const keywordsDestroy = (id: string) => coreApiClient.delete(`keywords/${id}/`);
 
-const linkChat = () => coreApiClient.post("chats/link_chat/");
+const chatsList = () => coreApiClient.get("chats/");
+
+const chatsLink = () => coreApiClient.post("chats/link_chat/");
+
+const chatsGetBySessionUuid = (uuid: string) =>
+  coreApiClient.get(`chats/${uuid}/get_chat_by_session_uuid/`);
 
 const coreApi = {
   keywordsList,
   keywordsCreate,
   keywordsDestroy,
-  linkChat,
+  chatsList,
+  chatsLink,
+  chatsGetBySessionUuid,
 };
 
 export default coreApi;

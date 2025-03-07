@@ -23,7 +23,7 @@ import { notifications } from "@mantine/notifications";
 import { useUser } from "./auth/hooks";
 import useApi from "./utils/api/useApi";
 import coreApi from "./utils/api/coreApi";
-import { Keyword } from "./utils/api/api_types";
+import { Keyword, Chat } from "./utils/api/api_types";
 import AddKeywordModal from "./components/AddKeywordModal";
 import LinkChatModal from "./components/LinkChatModal";
 import { useEffect, useState } from "react";
@@ -54,6 +54,13 @@ export default function DashboardPage() {
   useEffect(() => {
     setKeywordsData(keywordsRes.data);
   }, [JSON.stringify(keywordsRes.data)]);
+
+  const chatsRes = useApi<Chat[]>({
+    apiFunc: coreApi.chatsList,
+    unpackName: "chats",
+    defaultData: [],
+  });
+  const chatsData = chatsRes.data;
 
   const [loadingIndices, setLoadingIndices] = useState<number[]>([]);
   const handleDelete = async (id: number, index: number, name: string) => {
@@ -91,19 +98,41 @@ export default function DashboardPage() {
       <LinkChatModal
         opened={openedChatLinkModal}
         onClose={closeChatLinkModal}
-        onSuccess={() => {}}
+        onSuccess={chatsRes.refresh}
       />
       {/* Main Content */}
       <Stack align="center">
         <Paper my="md" p="md" w={{ base: "100%", xs: 400 }}>
           <Title order={3}>Welcome back, {user?.username}</Title>
-
-          <Group wrap="nowrap" justify="space-between" mt="sm">
-            <Text>No Number Linked 📵</Text>
-            <Button onClick={openChatLinkModal} variant="outline">
-              Link Number
-            </Button>
-          </Group>
+          {chatsRes.loading ? (
+            <Group gap="md" mt="xl">
+              <Loader />
+              <Text c="grey">Loading Keywords...</Text>
+            </Group>
+          ) : chatsData.length > 0 ? (
+            <Stack>
+              {chatsData.map((chat, index) => (
+                <Group
+                  key={index}
+                  wrap="nowrap"
+                  justify="space-between"
+                  mt="sm"
+                >
+                  <Text>Linked Chat: {chat.provider}</Text>
+                  <Button onClick={openChatLinkModal} variant="outline">
+                    Manage Chat
+                  </Button>
+                </Group>
+              ))}
+            </Stack>
+          ) : (
+            <Group wrap="nowrap" justify="space-between" mt="sm">
+              <Text>No Chats Linked 📵</Text>
+              <Button onClick={openChatLinkModal} variant="outline">
+                Link Chat
+              </Button>
+            </Group>
+          )}
         </Paper>
         {/* TODO: Disabled if no phone is added  - TELL USER TO LINK PHOE IN TOOLTIP */}
         <Button
