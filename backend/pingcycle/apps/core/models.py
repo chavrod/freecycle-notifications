@@ -6,11 +6,15 @@ from django.utils import timezone
 from django.db import models, IntegrityError
 from django.conf import settings
 from django.db.models import Q
-from django.db.models.constraints import CheckConstraint
+from django.db.models.constraints import CheckConstraint, UniqueConstraint
 
 from rest_framework.exceptions import ValidationError
 
-from config.settings import MAX_KEYWORDS_PER_USER, CHAT_TEMP_UUID_MAX_VALID_SECONDS
+from config.settings import (
+    MAX_KEYWORDS_PER_USER,
+    CHAT_TEMP_UUID_MAX_VALID_SECONDS,
+    MAX_CHATS_PER_USER,
+)
 
 
 class KeywordManager(models.Manager):
@@ -57,9 +61,7 @@ class Keyword(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(
-                fields=["user", "name"], name="unique_user_name_combo"
-            )
+            UniqueConstraint(fields=["user", "name"], name="unique_user_name_combo")
         ]
         ordering = ["-created"]
 
@@ -138,6 +140,9 @@ class Chat(models.Model):
                 ),
                 name="check_non_null_number_reference_when_active_or_inactive",
             ),
+            UniqueConstraint(
+                fields=["reference", "provider"], name="unique_reference_provider_combo"
+            ),
         ]
 
 
@@ -154,23 +159,24 @@ class ChatLinkingSession(models.Model):
         Gets or creates a valid uuid, that Telegram bot can use to uniquely
         identify a user linking a chat.
         """
-        # Check if user already has a linked chat
-        chat = Chat.objects.filter(user=user).first()
-        if chat:
-            if chat.state in [Chat.State.ACTIVE, Chat.State.INACTIVE]:
-                raise ValidationError(
-                    {
-                        "detail": "You already have a linked chat. You can unlink your existing chat."
-                    }
-                )
-        else:
-            chat = Chat.objects.create(
-                number=None,
-                reference=None,
-                provider=Chat.Provider.TELEGRAM,
-                user=user,
-                state=Chat.State.SETUP,
+        # Check users linked chat count
+        chats = Chat.objects.filter(
+            user=user, state__in=[Chat.State.ACTIVE, Chat.State.INACTIVE]
+        )
+        if chats.count() > MAX_CHATS_PER_USER:
+            raise ValidationError(
+                {
+                    "detail": f"Total number of linked chats: {MAX_CHATS_PER_USER}. Max allowed number of Chats: {MAX_CHATS_PER_USER}"
+                }
             )
+
+        chat = Chat.objects.create(
+            number=None,
+            reference=None,
+            provider=Chat.Provider.TELEGRAM,
+            user=user,
+            state=Chat.State.SETUP,
+        )
 
         valid_linking_session = chat.get_valid_linking_session()
         if valid_linking_session:
