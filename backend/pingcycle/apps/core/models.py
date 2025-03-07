@@ -114,12 +114,9 @@ class Chat(models.Model):
     def get_valid_linking_session(self) -> Optional["ChatLinkingSession"]:
         assert self.state == Chat.State.SETUP, "Expected chat to be in 'SETUP' state."
 
-        cutoff_time = timezone.now() - timedelta(
-            seconds=CHAT_TEMP_UUID_MAX_VALID_SECONDS
-        )
         return (
-            self.linking_sessions.filter(uuid_created__gte=cutoff_time)
-            .order_by("-uuid_created")
+            self.linking_sessions.filter(uuid_expiry__gte=timezone.now())
+            .order_by("-uuid_expiry")
             .first()
         )
 
@@ -149,7 +146,7 @@ class ChatLinkingSession(models.Model):
         Chat, related_name="linking_sessions", on_delete=models.CASCADE
     )
     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
-    uuid_created = models.DateTimeField(auto_now_add=True)
+    uuid_expiry = models.DateTimeField()
 
     @classmethod
     def get_or_create_custom(cls, user):
@@ -184,11 +181,16 @@ class ChatLinkingSession(models.Model):
         while new_session is None:
             try:
                 if attempts > 4:  # Extremely unlikely to happen
+                    # TODO: SENTRY!
                     raise ValidationError(
                         {"detail": "Something went wrong. Please try again."}
                     )
-                    # TODO: SENTRY!
-                new_session = ChatLinkingSession.objects.create(chat=chat)
+                uuid_expiry = timezone.now() + timedelta(
+                    seconds=CHAT_TEMP_UUID_MAX_VALID_SECONDS
+                )
+                new_session = ChatLinkingSession.objects.create(
+                    chat=chat, uuid_expiry=uuid_expiry
+                )
             except IntegrityError:
                 print("Failed to create session, reattempting.")
                 attempts += 1

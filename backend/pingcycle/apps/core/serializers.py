@@ -2,7 +2,7 @@ import re
 
 from rest_framework import serializers
 
-from .models import Keyword
+from .models import Keyword, Chat
 
 
 class KeywordsSerializer(serializers.ModelSerializer):
@@ -22,3 +22,9 @@ class KeywordsCreationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Keyword
         fields = ["name"]
+
+
+class ChatsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chat
+        exclude = ["user"]

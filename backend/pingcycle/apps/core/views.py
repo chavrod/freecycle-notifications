@@ -10,9 +10,10 @@ from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError, NotFound
 
 from .models import Keyword, Chat, ChatLinkingSession
-from .serializers import KeywordsSerializer, KeywordsCreationSerializer
+from .serializers import KeywordsSerializer, KeywordsCreationSerializer, ChatsSerializer
 from pingcycle.tools import messaging_providers
 
 
@@ -61,6 +62,13 @@ class ChatsViewSet(
 ):
     permission_classes = [IsAuthenticated]
 
+    def list(self, request, *args, **kwargs):
+        user_chats = Chat.objects.filter(user=request.user).exclude(
+            state=Chat.State.SETUP
+        )
+        serializer = ChatsSerializer(user_chats, many=True)
+        return Response({"chats": serializer.data})
+
     @action(methods=["post"], detail=False)
     def link_chat(self, request, *args, **kwargs):
         print("Request to LINK CHAT.")
@@ -73,6 +81,24 @@ class ChatsViewSet(
     @action(methods=["post"], detail=False)
     def unlink_chat(self, request, *args, **kwargs):
         pass
+
+    @action(methods=["get"], detail=True)
+    def get_chat_by_session_uuid(self, request, pk=None, *args, **kwargs):
+        if pk is None:
+            raise ValidationError("UUID is required")
+        uuid = pk
+
+        try:
+            chat = Chat.objects.get(
+                linking_sessions__uuid=uuid, state=Chat.State.ACTIVE
+            )
+        except Chat.DoesNotExist:
+            raise NotFound("No ACTIVE chat with this session uuid")
+
+        return Response(
+            data={"active_chat_id": chat.id},
+            status=status.HTTP_200_OK,
+        )
 
 
 @api_view(["POST"])

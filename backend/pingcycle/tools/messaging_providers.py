@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, Tuple
 import requests
 import uuid
 
@@ -14,8 +14,19 @@ from config.settings import (
     BASE_ORIGIN,
     WH_BASE_DOMAIN,
     CONFIG,
-    CHAT_TEMP_UUID_MAX_VALID_SECONDS,
 )
+
+
+class UserFriendlyChatError(Exception):
+    """
+    Raised when we want to respond to the user
+    with a useful message e.g. setup uuid token expired
+    """
+
+    def __init__(self, message, **kwargs):
+        self.message = message
+        self.chat_reference = kwargs.get("chat_reference")
+        super().__init__(self.message)
 
 
 class MessagingProvider:
@@ -43,7 +54,7 @@ class MessagingProvider:
             f"{self.__class__.__name__}._get_webhook_url() not implemented."
         )
 
-    def _get_chat(self, data) -> Chat | None:
+    def _get_or_create_chat(self, data) -> Tuple[Chat | None, bool]:
         raise NotImplementedError(
             f"{self.__class__.__name__}._get_or_create_chat() not implemented."
         )
@@ -80,30 +91,28 @@ class MessagingProvider:
         message.save()
 
     def _receive_message(self, data):
-        chat = self._get_chat(data)
+        chat, created = self._get_or_create_chat(data)
         # text = self._get_text(data)
 
+        if created:
+            self._send_welcome_message(chat)
+            return
         # Any messages from unlinked chats are ignored
         if chat is None:
             return
 
-        # Any messages not in SETUP state are ignored
-        if chat.state != Chat.State.SETUP:
-            return
-
         # Check rate limit for the specific chat
 
-        self._send_welcome_message(chat)
+        # Decide how to respond
 
     def _send_welcome_message(self, chat: Chat):
         user_email = chat.user.email
         link = f"{BASE_ORIGIN}/dashboard"
-        text = f"""Hello from PingCycle, {chat.name}!
-
-        We have linked this number to your existing account {self.bold(user_email)}.
-
-        Head back to {link} to add keywords and start receiving notifications in this chat."""
-
+        text = (
+            f"👋 Hello from PingCycle, {chat.name}!\n\n"
+            f"We have linked 🔗 this number to your existing account {self.bold(user_email)}\n\n"
+            f"🔙 Head back to {link} to add keywords 🔑 and start collecting them freebies 😎"
+        )
         message = Message.objects.create(
             chat=chat,
             text=text,
@@ -118,7 +127,9 @@ class MessagingProvider:
     #         f"Rate limit exceeded for chat ID {message.chat.id} with message: {message}"
     #     )
 
-    def _validate_uuid(self, potential_uuid):
+    def _get_valid_linking_session(
+        self, potential_uuid, chat_reference
+    ) -> ChatLinkingSession:
         # Validate if it's a proper UUID v4
         try:
             extracted_uuid = uuid.UUID(potential_uuid, version=4)
@@ -129,18 +140,23 @@ class MessagingProvider:
         if str(extracted_uuid) != potential_uuid:
             raise ValueError("Provided UUID is not a valid v4 UUID")
 
-        linking_session = ChatLinkingSession.objects.get(uuid=extracted_uuid)
-        print("Found Linking Session: ", linking_session)
-        uuid_created_time = linking_session.uuid_created
+        try:
+            linking_session = ChatLinkingSession.objects.get(uuid=extracted_uuid)
+        except ChatLinkingSession.DoesNotExist:
+            print("No sessions match provided uuid")
+            raise ValidationError("No sessions match provided uuid")
 
-        cutoff_time = timezone.now() - timedelta(
-            seconds=CHAT_TEMP_UUID_MAX_VALID_SECONDS
-        )
-        if uuid_created_time < cutoff_time:
-            # TODO: Tell customer to retry?? Calc diff seconds when testing
-            # TODO: As oppose to getting cutoff_time, just add change the field to invalidate_at_time!!!  (change in models also)
-            print("Token is invalid")
-        return extracted_uuid
+        expiry_datetime = linking_session.uuid_expiry
+        if expiry_datetime < timezone.now():
+            print("Expired linking session, raising error")
+            raise UserFriendlyChatError(
+                message="Your linking session has expired 😢\n\n"
+                f"🔙 Head back to the app and try again: {BASE_ORIGIN}/dashboard\n\n"
+                "If the issue persists, contact help@pingcycle.org",
+                chat_reference=chat_reference,
+            )
+
+        return linking_session
 
 
 class Telegram(MessagingProvider):
@@ -194,6 +210,13 @@ class Telegram(MessagingProvider):
                     return Response(status=status.HTTP_200_OK)
 
                 self._receive_message(data)
+            except UserFriendlyChatError as e:
+                self._post_api(
+                    "sendMessage",
+                    chat_id=e.chat_reference,
+                    text=e.message,
+                    parse_mode="Markdown",
+                )
             except Exception as e:
                 print("ERROR TELEGRAM handle_webhook(): ", e)
                 # TODO: SENTRY
@@ -203,7 +226,7 @@ class Telegram(MessagingProvider):
 
         return Response(status=status.HTTP_200_OK)
 
-    def _get_chat(self, data):
+    def _get_or_create_chat(self, data):
         message_from = data["message"]["from"]
         from_id = message_from["id"]
 
@@ -212,43 +235,43 @@ class Telegram(MessagingProvider):
                 reference=from_id,
                 provider=Chat.Provider.TELEGRAM,
             )
-            return existing_chat
+            return existing_chat, False
         except Chat.DoesNotExist:
             print("This is an unlinked chat")
 
-        # Check if the text starts with '/start'
-        message_text = data["text"]
-        print("message_text: ", message_text)
+        # For unlinked chats, we expect uuid to be present
+        # e.g. '/start c9bf9e57-1685-4c89-bafb-ff5af830be8a'
+        message_text = data["message"]["text"]
+
         if not message_text.startswith("/start "):
             raise ValueError("Message does not start with '/start'")
         potential_uuid = message_text.split(" ", 1)[1]  # Get the part after '/start '
-        print("potential_uuid: ", potential_uuid)
-        valid_uuid = self._validate_uuid(potential_uuid)
-        print("valid_uuid: ", valid_uuid)
+        linking_session = self._get_valid_linking_session(potential_uuid, from_id)
 
         with transaction.atomic():
-            chat, created = Chat.objects.get_or_create(
-                reference=from_id,
-                provider=Chat.Provider.TELEGRAM,
-            )
+            chat = linking_session.chat
 
-            if created:
-                first_name = message_from.get("first_name", "").strip()
-                last_name = message_from.get("last_name", "").strip()
-                full_name = f"{first_name} {last_name}".strip()
-                print(f"Setting chat name to: {full_name}")
+            chat.state = Chat.State.ACTIVE
 
-                username = message_from.get("username")
-                if username:
-                    number = f"@{username}"
-                else:
-                    number = f"Telegram"
+            chat.reference = from_id
 
-                chat.name = full_name
-                chat.number = number
-                chat.save(update_fields=["name", "number"])
+            first_name = message_from.get("first_name", "").strip()
+            last_name = message_from.get("last_name", "").strip()
+            full_name = f"{first_name} {last_name}".strip()
+            print(f"Setting chat name to: {full_name}")
 
-        return chat
+            username = message_from.get("username")
+            if username:
+                number = f"@{username}"
+            else:
+                number = f"Telegram"
+
+            chat.name = full_name
+            chat.number = number
+
+            chat.save(update_fields=["state", "reference", "name", "number"])
+
+            return chat, True
 
     def _get_ref(self, data) -> Optional[str]:
         return data["message"]["message_id"]
