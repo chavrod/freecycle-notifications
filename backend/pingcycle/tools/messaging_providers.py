@@ -230,20 +230,31 @@ class Telegram(MessagingProvider):
         message_from = data["message"]["from"]
         from_id = message_from["id"]
 
+        message_text = data["message"]["text"]
+        attempting_to_link_chat = message_text.startswith("/start ")
+
         try:
             existing_chat = Chat.objects.get(
                 reference=from_id,
                 provider=Chat.Provider.TELEGRAM,
             )
+            if attempting_to_link_chat:
+                raise UserFriendlyChatError(
+                    message=(
+                        f"⛔️ This chat is already associated with an account: {existing_chat.user.email}\n\n"
+                        f"If you want to link this chat to the new account, first unlink it from the old account.\n\n"
+                        f"🔙 Log in to the app with the old account: {BASE_ORIGIN}\n\n"
+                        "If that is not possible, please contact help@pingcycle.org for assistance."
+                    ),
+                    chat_reference=from_id,
+                )
             return existing_chat, False
         except Chat.DoesNotExist:
             print("This is an unlinked chat")
 
         # For unlinked chats, we expect uuid to be present
         # e.g. '/start c9bf9e57-1685-4c89-bafb-ff5af830be8a'
-        message_text = data["message"]["text"]
-
-        if not message_text.startswith("/start "):
+        if not attempting_to_link_chat:
             raise ValueError("Message does not start with '/start'")
         potential_uuid = message_text.split(" ", 1)[1]  # Get the part after '/start '
         linking_session = self._get_valid_linking_session(potential_uuid, from_id)
