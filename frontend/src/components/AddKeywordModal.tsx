@@ -29,7 +29,6 @@ export default function AddKeywordModal({
     form: form,
     apiFunc: (formData: typeof form.values) => coreApi.keywordsCreate(formData),
     onSuccess: (addKeywrodRes) => {
-      close();
       resetAll();
       notifications.show({
         title: "Key added!",
