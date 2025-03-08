@@ -103,6 +103,8 @@ INSTALLED_APPS = [
     # Local Apps
     "pingcycle.apps.users",
     "pingcycle.apps.core",
+    # Scheduler
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [
@@ -182,7 +184,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Dublin"
 
 USE_I18N = True
 
@@ -241,6 +243,13 @@ ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "\u200b"
 TEMP_ALLOWED_EMAILS = CONFIG["TEMP_ALLOWED_EMAILS"]
+
+##################
+# Scraping Scheduler #
+##################
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TIME_LIMIT = 30
+CELERY_BROKER_URL = "redis://localhost:6379/0"
 
 ##################
 # Business Logic #
