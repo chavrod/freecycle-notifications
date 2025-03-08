@@ -108,7 +108,9 @@ class Chat(models.Model):
     )  # TODO: must be unique per provider
     provider = models.CharField(max_length=20, choices=Provider.choices)
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name="messages", on_delete=models.PROTECT
+        settings.AUTH_USER_MODEL,
+        related_name="messages",
+        on_delete=models.CASCADE,
     )
     state = models.CharField(max_length=30, choices=State.choices, default=State.SETUP)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -126,19 +128,11 @@ class Chat(models.Model):
         constraints = [
             CheckConstraint(
                 check=(
-                    (
-                        Q(state="ACTIVE")
-                        & Q(number__isnull=False)
-                        & Q(reference__isnull=False)
-                    )
-                    | (
-                        Q(state="INACTIVE")
-                        & Q(number__isnull=False)
-                        & Q(reference__isnull=False)
-                    )
+                    (Q(state="ACTIVE") & Q(reference__isnull=False))
+                    | (Q(state="INACTIVE") & Q(reference__isnull=False))
                     | Q(state="SETUP")
                 ),
-                name="check_non_null_number_reference_when_active_or_inactive",
+                name="check_non_null_reference_when_active_or_inactive",
             ),
             UniqueConstraint(
                 fields=["reference", "provider"], name="unique_reference_provider_combo"
