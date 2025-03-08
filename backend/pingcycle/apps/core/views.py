@@ -3,8 +3,7 @@ from datetime import timedelta
 from django.views.decorators.csrf import csrf_protect
 from django.middleware.csrf import get_token
 from django.http import JsonResponse
-from django.utils import timezone
-from django.db import IntegrityError
+from django.shortcuts import get_object_or_404
 
 from rest_framework import status, viewsets
 from rest_framework.response import Response
@@ -69,18 +68,43 @@ class ChatsViewSet(
         serializer = ChatsSerializer(user_chats, many=True)
         return Response({"chats": serializer.data})
 
-    @action(methods=["post"], detail=False)
-    def link_chat(self, request, *args, **kwargs):
-        print("Request to LINK CHAT.")
+    def create(self, request, *args, **kwargs):
         linking_session = ChatLinkingSession.get_or_create_custom(user=request.user)
         return Response(
             data={"linking_session": linking_session.uuid},
             status=status.HTTP_200_OK,
         )
 
-    @action(methods=["post"], detail=False)
-    def unlink_chat(self, request, *args, **kwargs):
-        pass
+    def destroy(self, request, pk=None, *args, **kwargs):
+        try:
+            chat = Chat.objects.get(pk=pk, user=request.user)
+            chat.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Chat.DoesNotExist:
+            return Response(
+                {"error": "Chat not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(methods=["post"], detail=True)
+    def toggle_state(self, request, pk=None, *args, **kwargs):
+        if pk is None:
+            raise ValidationError("id is required")
+
+        chat = get_object_or_404(Chat, pk=pk, user=request.user)
+
+        if chat.state == Chat.State.SETUP:
+            raise ValidationError("Chat is not linked")
+
+        chat.state = (
+            Chat.State.INACTIVE
+            if chat.state == Chat.State.ACTIVE
+            else Chat.State.ACTIVE
+        )
+
+        chat.save(update_fields=["state"])
+
+        serializer = ChatsSerializer(chat)
+        return Response({"chat": serializer.data})
 
     @action(methods=["get"], detail=True)
     def get_chat_by_session_uuid(self, request, pk=None, *args, **kwargs):
@@ -90,7 +114,7 @@ class ChatsViewSet(
 
         try:
             chat = Chat.objects.get(
-                linking_sessions__uuid=uuid, state=Chat.State.ACTIVE
+                linking_sessions__uuid=uuid, state=Chat.State.ACTIVE, user=request.user
             )
         except Chat.DoesNotExist:
             raise NotFound("No ACTIVE chat with this session uuid")

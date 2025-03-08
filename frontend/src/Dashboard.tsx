@@ -24,7 +24,7 @@ import { useUser } from "./auth/hooks";
 import useApi from "./utils/api/useApi";
 import coreApi from "./utils/api/coreApi";
 import { Keyword, Chat } from "./utils/api/api_types";
-import { ChatProviderNamesAndEmoji } from "./utils/enum_records";
+import { ChatStateNameAndEmoji } from "./utils/enum_records";
 import AddKeywordModal from "./components/AddKeywordModal";
 import LinkChatModal from "./components/LinkChatModal";
 import { useEffect, useState } from "react";
@@ -116,7 +116,7 @@ export default function DashboardPage() {
                 <Stack key={index}>
                   <Group wrap="nowrap" justify="space-between" mt="sm">
                     <Text>Chat Status</Text>
-                    <Text>{ChatProviderNamesAndEmoji[chat.state]}</Text>
+                    <Text>{ChatStateNameAndEmoji[chat.state]}</Text>
                   </Group>
                 </Stack>
               ))}

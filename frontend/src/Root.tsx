@@ -59,9 +59,11 @@ export default function Root() {
 
             <Menu.Dropdown>
               <Menu.Label>{user.email}</Menu.Label>
-              <Menu.Item leftSection={<IconSettings size={14} />}>
-                Account Settings
-              </Menu.Item>
+              <Link to="/manage-chats" style={{ textDecoration: "none" }}>
+                <Menu.Item leftSection={<IconSettings size={14} />}>
+                  Manage Chats
+                </Menu.Item>
+              </Link>
               <Menu.Item
                 color="red"
                 leftSection={<IconLogout size={14} />}

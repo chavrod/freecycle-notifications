@@ -10,12 +10,16 @@ export enum ChatStateType {
   INACTIVE = "INACTIVE",
 }
 
+export enum ChatProviderType {
+  TELEGRAM = "TELEGRAM",
+}
+
 export interface Chat {
   id: number;
   name: string;
-  number: string;
+  number: string | null;
   reference: string;
-  provider: string;
+  provider: ChatProviderType;
   state: ChatStateType;
   created_at: string;
 }

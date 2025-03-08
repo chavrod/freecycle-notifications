@@ -33,7 +33,7 @@ export default function LinkChatModal({
     errors,
     resetAll,
   } = useApiAction({
-    apiFunc: coreApi.chatsLink,
+    apiFunc: coreApi.chatsCreate,
     onSuccess: (linkingSessionRes) => {
       const linkingSessionUuid = linkingSessionRes.linking_session;
       // Construct Telegram URL with the UUID

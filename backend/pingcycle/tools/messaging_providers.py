@@ -275,7 +275,7 @@ class Telegram(MessagingProvider):
             if username:
                 number = f"@{username}"
             else:
-                number = f"Telegram"
+                number = None
 
             chat.name = full_name
             chat.number = number
