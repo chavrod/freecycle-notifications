@@ -92,6 +92,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
+    "django.contrib.postgres",
     "rest_framework",
     # Authentication
     "allauth",
