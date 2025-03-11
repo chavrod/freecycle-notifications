@@ -52,7 +52,7 @@ export default function AddKeywordModal({
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <TextInput
           {...form.getInputProps("name")}
-          description="Be specific! For example, instead of 'furniture', use 'wooden chair'."
+          description="Be specific! For example, instead of 'furniture', use 'chair'."
           placeholder="Enter a new keyword"
           mb="md"
         />

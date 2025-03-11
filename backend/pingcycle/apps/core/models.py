@@ -89,7 +89,7 @@ class NotifiedProduct(models.Model):
         return f"https://www.freecycle.org/posts/{self.external_id}"
 
     def __str__(self):
-        return f"{self.name} in {self.sublocation} ({self.location}) - {self.created.strftime('%d-%m-%Y')} - {self.get_full_url()}"
+        return f"{self.product_name} in {self.sublocation} ({self.location}) - {self.created.strftime('%d-%m-%Y')} - {self.get_full_url()}"
 
 
 class Chat(models.Model):

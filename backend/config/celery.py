@@ -26,6 +26,9 @@ def setup_periodic_tasks(sender: Celery, **kwargs):
     )
 
 
+# TODO: SEPARATE SCRAPING AND SENDING INTO SEPARATE TASKS
+
+
 @app.task
 def check_for_products():
     print("started task. Sleeeping 10")
