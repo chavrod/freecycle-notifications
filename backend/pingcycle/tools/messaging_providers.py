@@ -9,7 +9,7 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from pingcycle.apps.core.models import Chat, Message, ChatLinkingSession
+import pingcycle.apps.core.models as core_models
 from config.settings import (
     BASE_ORIGIN,
     WH_BASE_DOMAIN,
@@ -54,7 +54,7 @@ class MessagingProvider:
             f"{self.__class__.__name__}._get_webhook_url() not implemented."
         )
 
-    def _get_or_create_chat(self, data) -> Tuple[Chat | None, bool]:
+    def _get_or_create_chat(self, data) -> Tuple[core_models.Chat | None, bool]:
         raise NotImplementedError(
             f"{self.__class__.__name__}._get_or_create_chat() not implemented."
         )
@@ -85,7 +85,7 @@ class MessagingProvider:
         )
 
     # TODO: Format product message
-    def _set_formatted_product_message_text(self, message: Message):
+    def _set_formatted_product_message_text(self, message: core_models.Message):
         return message.text
         message.text = result
         message.save()
@@ -105,7 +105,7 @@ class MessagingProvider:
 
         # Decide how to respond
 
-    def _send_welcome_message(self, chat: Chat):
+    def _send_welcome_message(self, chat: core_models.Chat):
         user_email = chat.user.email
         link = f"{BASE_ORIGIN}/dashboard"
         text = (
@@ -113,10 +113,10 @@ class MessagingProvider:
             f"We have linked 🔗 this number to your existing account {self.bold(user_email)}\n\n"
             f"🔙 Head back to {link} to add keywords 🔑 and start collecting them freebies 😎"
         )
-        message = Message.objects.create(
+        message = core_models.Message.objects.create(
             chat=chat,
             text=text,
-            sender=Message.Sender.USER,
+            sender=core_models.Message.Sender.USER,
         )
         self.send_message(message)
 
@@ -129,7 +129,7 @@ class MessagingProvider:
 
     def _get_valid_linking_session(
         self, potential_uuid, chat_reference
-    ) -> ChatLinkingSession:
+    ) -> core_models.ChatLinkingSession:
         # Validate if it's a proper UUID v4
         try:
             extracted_uuid = uuid.UUID(potential_uuid, version=4)
@@ -141,8 +141,10 @@ class MessagingProvider:
             raise ValueError("Provided UUID is not a valid v4 UUID")
 
         try:
-            linking_session = ChatLinkingSession.objects.get(uuid=extracted_uuid)
-        except ChatLinkingSession.DoesNotExist:
+            linking_session = core_models.ChatLinkingSession.objects.get(
+                uuid=extracted_uuid
+            )
+        except core_models.ChatLinkingSession.DoesNotExist:
             print("No sessions match provided uuid")
             raise ValidationError("No sessions match provided uuid")
 
@@ -160,7 +162,7 @@ class MessagingProvider:
 
 
 class Telegram(MessagingProvider):
-    key = Chat.Provider.TELEGRAM
+    key = core_models.Chat.Provider.TELEGRAM
 
     def __init__(self):
         super().__init__()
@@ -234,9 +236,9 @@ class Telegram(MessagingProvider):
         attempting_to_link_chat = message_text.startswith("/start ")
 
         try:
-            existing_chat = Chat.objects.get(
+            existing_chat = core_models.Chat.objects.get(
                 reference=from_id,
-                provider=Chat.Provider.TELEGRAM,
+                provider=core_models.Chat.Provider.TELEGRAM,
             )
             if attempting_to_link_chat:
                 raise UserFriendlyChatError(
@@ -249,7 +251,7 @@ class Telegram(MessagingProvider):
                     chat_reference=from_id,
                 )
             return existing_chat, False
-        except Chat.DoesNotExist:
+        except core_models.Chat.DoesNotExist:
             print("This is an unlinked chat")
 
         # For unlinked chats, we expect uuid to be present
@@ -262,7 +264,7 @@ class Telegram(MessagingProvider):
         with transaction.atomic():
             chat = linking_session.chat
 
-            chat.state = Chat.State.ACTIVE
+            chat.state = core_models.Chat.State.ACTIVE
 
             chat.reference = from_id
 
@@ -295,7 +297,7 @@ class Telegram(MessagingProvider):
         else:
             return data["message"].get("text")
 
-    def send_message(self, message: Message):
+    def send_message(self, message: core_models.Message):
         self._post_api(
             "sendMessage",
             chat_id=message.chat.reference,
@@ -320,8 +322,8 @@ class Telegram(MessagingProvider):
 
 PROVIDERS = {}
 
-if Chat.Provider.TELEGRAM in CONFIG["MESSAGING_PROVIDERS"]:
-    PROVIDERS[Chat.Provider.TELEGRAM] = Telegram()
+if core_models.Chat.Provider.TELEGRAM in CONFIG["MESSAGING_PROVIDERS"]:
+    PROVIDERS[core_models.Chat.Provider.TELEGRAM] = Telegram()
 
 
 def get_messaging_provider(provider_key) -> MessagingProvider:
