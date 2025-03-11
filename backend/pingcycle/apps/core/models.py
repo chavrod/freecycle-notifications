@@ -109,7 +109,7 @@ class Chat(models.Model):
     provider = models.CharField(max_length=20, choices=Provider.choices)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        related_name="messages",
+        related_name="chats",
         on_delete=models.CASCADE,
     )
     state = models.CharField(max_length=30, choices=State.choices, default=State.SETUP)
