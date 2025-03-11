@@ -5,12 +5,12 @@ import random
 import asyncio
 from typing import List, Tuple
 
-# from django.db import transaction
+from django.db import transaction
 
 import sentry_sdk
 from playwright.async_api import async_playwright, Page, Playwright, Browser
 
-# import pingcycle.apps.core.models as core_models
+import pingcycle.apps.core.models as core_models
 
 # TODO: Temporary solution////
 TOWN_NAME_URL_EXT = [
@@ -68,6 +68,7 @@ class Scraper:
             )
             time_ago = await time_ago_span.inner_text()
             print("time_ago: ", time_ago)
+            # TODO: Enable back!
             # No Recent Entries
             # if not "minutes" in time_ago:
             #     break
@@ -75,12 +76,12 @@ class Scraper:
             product_id = await product.get_attribute("data-id")
             print(f"product_id: {product_id}")
 
-            # try:
-            #     core_models.NotifiedProduct.objects.get(external_id=product_id)
-            #     continue
-            # except core_models.NotifiedProduct.DoesNotExist:
-            #     print("No matching product on records")
-            #     pass
+            try:
+                core_models.NotifiedProduct.objects.get(external_id=product_id)
+                continue
+            except core_models.NotifiedProduct.DoesNotExist:
+                print("No matching product on records")
+                pass
 
             # post-list-item-content-description hide-for-small-only
             # print("Checking if product name matches Keywords")
@@ -96,8 +97,8 @@ class Scraper:
                 # TODO: SENTRY
                 return
             # Get the title from the <a> element's text
-            title = await link_element.inner_text()
-            print(f"title: {title}")
+            product_name = await link_element.inner_text()
+            print(f"product_name: {product_name}")
             # Get the URL extension from the <a> element's href attribute
             url_extension = await link_element.get_attribute("href")
             print(f"url_extension: {url_extension}")
@@ -121,38 +122,21 @@ class Scraper:
             )
             print(f"sublocation: {sublocation}\n\n\n")
 
-            #
-            # Example
-            # Tall Wood Shlves - of misspelling - how can we pick that up?
-            # Wardrobe/vanity - two words stuck together...
-            # Pair of full length curtains - sned to people who look for "long curtains" or any curtains
-
-            # TODO: make query matching smarter!
-            # Not efficient to load all Keywords into memory
-            # keywords = core_models.Keyword.objects.all()
-            # # Find keywords that are in product_name
-            # matching_keywords = []
-            # for keyword in keywords:
-            #     if keyword.name.lower() in product_name.lower():
-            #         matching_keywords.append(keyword)
-
-            # if matching_keywords:
-            #     # Use Django transaction to ensure atomicity
-            #     with transaction.atomic():
-            #         # Create NotifiedProduct
-            #         notified_product = core_models.NotifiedProduct.objects.create(
-            #             product_name=product_name,
-            #             status=core_models.NotifiedProduct.Status.QUEUED,
-            #             external_id=product_id,
-            #             img=product_img_url,
-            #         )
-
-            #         # Link matching keywords to the notified product
-            #         for keyword in matching_keywords:
-            #             notified_product.keywords.add(keyword)
-
-            #         notified_product.save()
-            #         print(f"NotifiedProduct created for {product_name}")
+            matched_keywords = core_models.Keyword.objects.filter(
+                name__trigram_similar=product_name
+            )
+            if matched_keywords:
+                notified_product = core_models.NotifiedProduct.objects.create(
+                    product_name=product_name,
+                    status=core_models.NotifiedProduct.Status.QUEUED,
+                    external_id=product_id,
+                    description=description,
+                    location=town_name,
+                    sublocation=sublocation,
+                    img=product_img_url,
+                )
+                notified_product.keywords.set(matched_keywords)
+                notified_product.save(update_fields=["keywords"])
 
     def _get_town_url(self, town_ext: str) -> str:
         # https://www.freecycle.org/town/CountyWicklow
