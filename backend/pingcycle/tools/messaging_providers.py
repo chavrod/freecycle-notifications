@@ -160,60 +160,6 @@ class MessagingProvider:
 
         return linking_session
 
-    def send_notified_products_in_queue(self):
-        products_chats_keywords = self._get_products_to_send()
-        print("products_chats_keywords: ", products_chats_keywords)
-
-        for product, chats_keywords in products_chats_keywords:
-            for chat, keywords in chats_keywords.values():
-                self.send_notified_products_in_queue(product, chat, keywords)
-            product.status = core_models.NotifiedProduct.Status.SENT
-            product.save(update_fields=["status"])
-
-        # TODO: After sending, mark products as SENT
-
-        # TODO: Try / Catch ?
-
-        # TODO: Retry sending? - retry with 5 sec timeput
-        # In a single chat, avoid sending more than one message per second.
-        # We may allow short bursts that go over this limit,
-        # but eventually you'll begin receiving 429 errors.
-
-        # TODO: Note re making sure we do not exceed task timeout!! (when scaled)
-
-    # TODO: Annotate
-    def _get_products_to_send(
-        self,
-    ) -> List[
-        Tuple[
-            core_models.NotifiedProduct,
-            Dict[core_models.Chat, List[core_models.Keyword]],
-        ]
-    ]:
-        products = core_models.NotifiedProduct.objects.filter(
-            status=core_models.NotifiedProduct.Status.QUEUED
-        ).prefetch_related("keywords__user__chats")
-        products_chats_keywords = []
-        for product in products:
-            chats_keywords = {}
-
-            matched_keywords = product.keywords.all()
-            for matched_keyword in matched_keywords:
-                chats = matched_keyword.user.chats.all()
-
-                for chat in chats:
-                    if chat.state != core_models.Chat.State.ACTIVE:
-                        continue
-                    # Initialize the list if the user key doesn't exist
-                    if chat not in chats_keywords:
-                        chats_keywords[chat] = []
-                    chats_keywords[chat].append(matched_keyword)
-
-            if chats_keywords:
-                products_chats_keywords.append((product, chats_keywords))
-
-        return products_chats_keywords
-
 
 class Telegram(MessagingProvider):
     key = core_models.Chat.Provider.TELEGRAM
