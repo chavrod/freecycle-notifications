@@ -30,7 +30,10 @@ class UserFriendlyChatError(Exception):
 
 
 class MessagingProvider:
-    key = None
+    key: str = None
+
+    CHAT_LIMIT_SECONDS: Tuple[int, int] = None
+    TOTAL_LIMIT_SECONDS: Tuple[int, int] = None
 
     def __init__(self):
         self._rate_limit_count = 10
@@ -163,6 +166,9 @@ class MessagingProvider:
 
 class Telegram(MessagingProvider):
     key = core_models.Chat.Provider.TELEGRAM
+
+    CHAT_LIMIT_SECONDS = (1, 1)
+    TOTAL_LIMIT_SECONDS = (30, 1)
 
     def __init__(self):
         super().__init__()
