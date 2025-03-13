@@ -2,6 +2,7 @@ import time
 import random
 from typing import Optional, Tuple, List, Dict
 
+from pingcycle.tools.messaging_providers import MessagingProvider
 import pingcycle.apps.core.models as core_models
 
 # TODO: Retry logic??? yes!
@@ -16,6 +17,11 @@ import pingcycle.apps.core.models as core_models
 # - we attempt to retry X times after Y seconds
 
 
+class MessageSchedulerValidationError(Exception):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
 class MessageScheduler:
     """
     Sends messages in a way that does not violate a provider's rate limits
@@ -23,8 +29,10 @@ class MessageScheduler:
     Also responsible for retry logic
     """
 
-    def __init__(self):
-        # TODO: Enusre we get limits from provider and valdiate them
+    def __init__(self, provider: MessagingProvider):
+        self.chat_limit, self.total_limit = self.set_limits(
+            provider.CHAT_LIMIT_SECONDS, provider.TOTAL_LIMIT_SECONDS
+        )
         self.last_sent_time_per_chat = {}  # Tracks last sent time per chat
         self.overall_messages_sent = (
             0  # Tracks overall messages sent in the current second
@@ -32,6 +40,30 @@ class MessageScheduler:
         self.last_overall_check_time = time.time()
         self.max_retries = 3  # Maximum number of retries per message
         self.chat_queue = self._set_chat_queue()
+
+    @staticmethod
+    def set_limits(chat_limit, total_limit):
+        """
+        Assumes limits are passed in a tuple (A, B) where
+        A is number of messages and B is number of seconds
+
+        The function normalise to per second and valdiates
+        that per chat is below total limit
+        """
+        # Unpacking the (limit, period) tuples
+        chat_rate, chat_period = chat_limit
+        total_rate, total_period = total_limit
+
+        # Normalize both rates to a per-second basis
+        normalized_chat_rate = chat_rate / chat_period
+        normalized_total_rate = total_rate / total_period
+
+        if normalized_chat_rate > normalized_total_rate:
+            raise MessageSchedulerValidationError(
+                "Chat limit cannot be greater than total."
+            )
+
+        return normalized_chat_rate, normalized_total_rate
 
     def _set_chat_queue(self):
         products_chats_keywords = self._get_products_to_send()
@@ -142,8 +174,3 @@ class MessageScheduler:
                 products_chats_keywords.append((product, chats_keywords))
 
         return products_chats_keywords
-
-
-# Example Usage:
-msg_sender = MessageSender()
-msg_sender.send_notified_products_in_queue()
