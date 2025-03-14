@@ -33,6 +33,8 @@ pycparser==2.22
 pyee==12.1.1
 PyJWT==2.10.1
 pytest==8.3.5
+pytest-django==4.10.0
+pytest-mock==3.14.0
 python-crontab==3.2.0
 python-dateutil==2.9.0.post0
 redis==5.2.1
