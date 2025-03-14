@@ -12,9 +12,9 @@ import pingcycle.apps.core.models as core_models
 # 1 per chat per second
 
 # Add tests
-# - correct mesages are being sent (with correct keywords) + products marked as sent
 # - we stay within limits for many messages
 # - we attempt to retry X times after Y seconds
+# - correct mesages are being sent (with correct keywords) + products marked as sent
 
 
 class MessageSchedulerValidationError(Exception):
@@ -29,21 +29,22 @@ class MessageScheduler:
     Also responsible for retry logic
     """
 
+    # TODO: Raising error for chat intervals should be on boot + test
+
     def __init__(self, provider: MessagingProvider):
-        self.chat_limit, self.total_limit = self.set_limits(
+        self.chat_interval, self.total_interval = self._set_intervals(
             provider.CHAT_LIMIT_SECONDS, provider.TOTAL_LIMIT_SECONDS
         )
         self.last_sent_time_per_chat = {}  # Tracks last sent time per chat
-        self.overall_messages_sent = (
-            0  # Tracks overall messages sent in the current second
-        )
-        self.last_overall_check_time = time.time()
+        self.last_overall_send_time = 0
         self.max_retries = 3  # Maximum number of retries per message
-        self.chat_queue = self._set_chat_queue()
+        self.message_queue = self._set_message_queue()
 
     @staticmethod
-    def set_limits(chat_limit, total_limit):
+    def _set_intervals(chat_limit, total_limit):
         """
+        Sets how often a message could be sent
+
         Assumes limits are passed in a tuple (A, B) where
         A is number of messages and B is number of seconds
 
@@ -63,71 +64,96 @@ class MessageScheduler:
                 "Chat limit cannot be greater than total."
             )
 
-        return normalized_chat_rate, normalized_total_rate
+        return 1 / normalized_chat_rate, 1 / normalized_total_rate
 
-    def _set_chat_queue(self):
+    def _set_message_queue(self):
         products_chats_keywords = self._get_products_to_send()
-        chat_queue = []
+        message_queue = []
 
         for product, chats_keywords in products_chats_keywords:
             for chat, keywords in chats_keywords.items():
-                chat_queue.append((product, chat, keywords, 0))  # Init retry count at 0
+                message_queue.append(
+                    (product, chat, keywords, 0)
+                )  # Init retry count at 0
 
-        return chat_queue
+        return message_queue
 
     def send_notified_products_in_queue(self):
-        while self.chat_queue:
-            current_time = time.time()
+        while len(self.message_queue) > 0:
+            for i in range(len(self.message_queue)):
+                current_time = time.time()
 
-            # Reset overall message sent counter if a second has passed
-            # TODO: This logic needs to change as per chat and overall
-            # limnits may be different! here they are both 1 second...
-            if current_time - self.last_overall_check_time > 1:
-                self.overall_messages_sent = 0
-                self.last_overall_check_time = current_time
+                product, chat, keywords, retry_count = self.message_queue.pop(0)
+                last_chat_time = self.last_sent_time_per_chat.get(chat, 0)
 
-            for i in range(len(self.chat_queue)):
-                product, chat, keywords, retry_count = self.chat_queue.pop(0)
-                last_sent_time = self.last_sent_time_per_chat.get(chat, 0)
+                print("current_time: ", current_time)
+                print("last_chat_time: ", last_chat_time)
+                print("last_overall_send_time : ", self.last_overall_send_time)
+                print("time passed: ", current_time - last_chat_time)
+                print("total_interval: ", self.total_interval)
+                chat_interval_passed = (
+                    current_time - last_chat_time >= self.chat_interval
+                )
+                total_interval_passed = (
+                    current_time - self.last_overall_send_time >= self.total_interval
+                )
+                print(chat_interval_passed, total_interval_passed)
 
-                # Check per chat rate limit and overall rate limit
-                # TODO: This logic needs to change as per chat and overall
-                # limnits may be different! here they are both 1 second...
-                if (current_time - last_sent_time >= 1) and (
-                    self.overall_messages_sent < 30
-                ):
-                    successful = self._attempt_send(product, chat, keywords)
-                    if successful:
-                        # TODO: NotifiedProduct.Status.SENT needs to change!!
-                        # we should track is all necessary chats were notified
-                        # through Message.
-                        # But when do we create the instances? Update db in bulk? Test...
-
-                        # Updating here is wrong...
-                        product.status = core_models.NotifiedProduct.Status.SENT
-                        product.save(update_fields=["status"])
-
-                        # Update tracking variables
-                        self.last_sent_time_per_chat[chat] = current_time
-                        self.overall_messages_sent += 1
+                if chat_interval_passed and total_interval_passed:
+                    print("Sending...")
+                    time_sent = self._attempt_send(product, chat, keywords)
+                    if time_sent:
+                        self._udpate_message_status()
+                        self.last_sent_time_per_chat[chat] = time_sent
+                        self.last_overall_send_time = time_sent
                     else:
-                        # Retry logic: increment retry count
                         retry_count += 1
                         if retry_count <= self.max_retries:
-                            self.chat_queue.append(
+                            self.message_queue.append(
                                 (product, chat, keywords, retry_count)
                             )
+                        else:
+                            self._udpate_message_status()
                 else:
+                    print("Sleeping...")
                     # If not sent, return the item back to the queue
-                    # TODO: We should prevent shuffling for ages!!!!!!! Test
-                    self.chat_queue.append((product, chat, keywords))
+                    self.message_queue.append((product, chat, keywords, retry_count))
+                    # Sleep if total limit exceeded
+                    if not total_interval_passed:
+                        time.sleep(
+                            self.total_interval
+                            - (current_time - self.last_overall_send_time)
+                        )
 
-                # Break after processing 30 messages per second overall
-                if self.overall_messages_sent >= 30:
-                    break
+            # Reached the end of the loop
+            print(
+                "Reached the end of the loop with queue length: ",
+                len(self.message_queue),
+            )
+            if len(self.message_queue) > 0:
+                print("Getting valid wait time...")
+                print("self.message_queue: ", self.message_queue)
+                # Calculate the shortest wait time needed for the next action
+                current_time = time.time()
 
-            # Sleep for a short time to prevent CPU over-usage and allow some time to pass
-            time.sleep(0.01)
+                # The max function ensures that we do not calculate negative wait times.
+                next_chat_intervals = [
+                    max(
+                        0,
+                        (
+                            self.chat_interval
+                            - (current_time - self.last_sent_time_per_chat.get(chat, 0))
+                        ),
+                    )
+                    for _, chat, _, _ in self.message_queue
+                ]
+                print("next_chat_intervals: ", next_chat_intervals)
+
+                wait_time = min(next_chat_intervals)
+                print("wait_time chat: ", wait_time)
+
+                if wait_time > 0:
+                    time.sleep(wait_time)
 
     def _attempt_send(self, product, chat, keywords):
         try:
@@ -174,3 +200,10 @@ class MessageScheduler:
                 products_chats_keywords.append((product, chats_keywords))
 
         return products_chats_keywords
+
+    @staticmethod
+    def _udpate_message_status(message, status):
+        pass
+        # TODO: ...pre-create messages.. Update db in bulk? Test...
+        # product.status = core_models.NotifiedProduct.Status.SENT
+        # product.save(update_fields=["status"])
