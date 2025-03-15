@@ -108,16 +108,14 @@ def test_individual_chat_limit_enforce(
 
     mocker.patch.object(message_scheduler, "_udpate_message_status", return_value=True)
 
-    # Create mock objects for product, chat, and keywords using mocker
-    keywords_mock = [mocker.Mock(id=2)]
-
+    # Create mock Message objects
     for i, number_of_messages in enumerate(chats_messages):
         chat_id = i + 1
         chat_mock = mocker.Mock(id=chat_id)
         for count in range(1, number_of_messages + 1):
-            message_scheduler.message_queue.append(
-                (mocker.Mock(id=chat_id + count), chat_mock, keywords_mock, 0)
-            )
+            message_mock = mocker.Mock(id=count * chat_id)
+            type(message_mock).chat = mocker.PropertyMock(return_value=chat_mock)
+            message_scheduler.message_queue.append((message_mock, 0))
 
     # Record start time
     start_time = time.time()
@@ -167,9 +165,7 @@ def test_total_chat_limit_enforce(
 
     mocker.patch.object(message_scheduler, "_udpate_message_status", return_value=True)
 
-    # Create mock objects for product, chat, and keywords using mocker
-    keywords_mock = [mocker.Mock(id=2)]
-
+    # Create mock Message objects
     for id in range(1, chats + 1):
         message_mock = mocker.Mock(id=id)
         chat_mock = mocker.Mock(id=id)
