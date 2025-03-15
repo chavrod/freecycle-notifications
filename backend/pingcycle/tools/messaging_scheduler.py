@@ -164,18 +164,27 @@ class MessageScheduler:
             # print(f"Failed to send {product} to {chat}: {e}")
             return False
 
+    # TODO: TESTS
+    # 1. Marking NotifiedProduct as Messages Created
+    # (What if you have products that have no active chats ???)
+    # 2. Test for creating objects below (more of an integration test)
+    # 3. Testing retry
+    # -> add fail message + status e.g. 429
+
     def _set_message_queue(
         self,
     ) -> List[Tuple[core_models.Message, int]]:
-        # TODO: What if you have products that have no active chats ???
-
-        # TODO: Separate - should we do something different if we get 429 ???
         products = core_models.NotifiedProduct.objects.filter(
             status=core_models.NotifiedProduct.Status.QUEUED
         ).prefetch_related("keywords__user__chats")
         messages = []
         for product in products:
             chats_keywords = {}
+
+            # TODO: IMPORTANT
+            # this should only fetch the messages (with retry count from DB)
+            # creating Messages from NotifiedProduct should happen elsewhere
+            # NotifiedProduct status should be changed to bool called 'is_messages_created'
 
             # TODO: REFACTOR!!!! with tests first tho...
             matched_keywords = product.keywords.all()
