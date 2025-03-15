@@ -200,6 +200,11 @@ class ChatLinkingSession(models.Model):
 
 
 class Message(models.Model):
+    class Status(models.TextChoices):
+        CREATED = "CREATED"
+        SENT = "SENT"
+        FAILED = "FAILED"
+
     class Sender(models.TextChoices):
         BOT = "BOT"
         USER = "USER"
@@ -211,6 +216,10 @@ class Message(models.Model):
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     sender = models.CharField(max_length=30, choices=Sender.choices)
+    status = models.CharField(
+        max_length=30, choices=Status.choices, default=Status.CREATED
+    )
+    error_msg = models.CharField(null=True)
 
     def __str__(self):
         return f"Message to {self.chat} with status {self.status}"
