@@ -66,73 +66,67 @@ class MessageScheduler:
 
         return 1 / normalized_chat_rate, 1 / normalized_total_rate
 
-    def _set_message_queue(self):
-        products_chats_keywords = self._get_products_to_send()
-        message_queue = []
-
-        for product, chats_keywords in products_chats_keywords:
-            for chat, keywords in chats_keywords.items():
-                message_queue.append(
-                    (product, chat, keywords, 0)
-                )  # Init retry count at 0
-
-        return message_queue
-
     def send_notified_products_in_queue(self):
+        """
+        Continuously loops through the message queue until it is empty.
+
+        In each iteration, it checks whether the chat limit or the total
+        limit has been exceeded.
+
+        If the total limit is exceeded, the process waits before proceeding
+        to the next iteration.
+
+        If the chat limit is exceeded, the entry is re-added
+        to the end of the queue.
+
+        At the end of the loop, if there are entries left, it calculates
+        the wait time based on the chat with the shortest remaining wait time.
+
+        TODO: Could be further optimised
+        e.g. Current flaw if there is 1 chat in the loop with 30 messages
+        and we reach the limit we will only be able to wait after we have
+        looped though the whole list with 29 items. Then, will hit the limit again
+        and will only wait after looping through 28 items...
+        """
         while len(self.message_queue) > 0:
-            for i in range(len(self.message_queue)):
+            for _ in range(len(self.message_queue)):
                 current_time = time.time()
 
-                product, chat, keywords, retry_count = self.message_queue.pop(0)
-                last_chat_time = self.last_sent_time_per_chat.get(chat, 0)
+                message, retry_count = self.message_queue.pop(0)
+                last_chat_time = self.last_sent_time_per_chat.get(message.chat, 0)
 
-                print("current_time: ", current_time)
-                print("last_chat_time: ", last_chat_time)
-                print("last_overall_send_time : ", self.last_overall_send_time)
-                print("time passed: ", current_time - last_chat_time)
-                print("total_interval: ", self.total_interval)
                 chat_interval_passed = (
                     current_time - last_chat_time >= self.chat_interval
                 )
                 total_interval_passed = (
                     current_time - self.last_overall_send_time >= self.total_interval
                 )
-                print(chat_interval_passed, total_interval_passed)
 
                 if chat_interval_passed and total_interval_passed:
-                    print("Sending...")
-                    time_sent = self._attempt_send(product, chat, keywords)
-                    if time_sent:
+                    result = self._attempt_send(message)
+                    if result["is_ok"]:
                         self._udpate_message_status()
-                        self.last_sent_time_per_chat[chat] = time_sent
-                        self.last_overall_send_time = time_sent
+                        self.last_sent_time_per_chat[message.chat] = result["time_sent"]
+                        self.last_overall_send_time = result["time_sent"]
                     else:
                         retry_count += 1
                         if retry_count <= self.max_retries:
-                            self.message_queue.append(
-                                (product, chat, keywords, retry_count)
-                            )
+                            self.message_queue.append((message, retry_count))
                         else:
                             self._udpate_message_status()
                 else:
-                    print("Sleeping...")
                     # If not sent, return the item back to the queue
-                    self.message_queue.append((product, chat, keywords, retry_count))
+                    self.message_queue.append((message, retry_count))
                     # Sleep if total limit exceeded
                     if not total_interval_passed:
                         time.sleep(
                             self.total_interval
                             - (current_time - self.last_overall_send_time)
+                            + 0.01
                         )
 
             # Reached the end of the loop
-            print(
-                "Reached the end of the loop with queue length: ",
-                len(self.message_queue),
-            )
             if len(self.message_queue) > 0:
-                print("Getting valid wait time...")
-                print("self.message_queue: ", self.message_queue)
                 # Calculate the shortest wait time needed for the next action
                 current_time = time.time()
 
@@ -142,50 +136,51 @@ class MessageScheduler:
                         0,
                         (
                             self.chat_interval
-                            - (current_time - self.last_sent_time_per_chat.get(chat, 0))
+                            - (
+                                current_time
+                                - self.last_sent_time_per_chat.get(message.chat, 0)
+                            )
                         ),
                     )
-                    for _, chat, _, _ in self.message_queue
+                    for message, _ in self.message_queue
                 ]
-                print("next_chat_intervals: ", next_chat_intervals)
 
                 wait_time = min(next_chat_intervals)
-                print("wait_time chat: ", wait_time)
 
                 if wait_time > 0:
-                    time.sleep(wait_time)
+                    time.sleep(wait_time + 0.01)
 
-    def _attempt_send(self, product, chat, keywords):
+    def _attempt_send(self, message) -> dict:
         try:
             # Simulate potential network issues
             if random.choice([True, False]):
                 raise Exception("Network issue occurred")
 
-            print(
-                f"Sent message for product {product} to chat {chat} with keywords {keywords}"
-            )
+            # print(
+            #     f"Sent message for product {product} to chat {chat} with keywords {keywords}"
+            # )
             return True
         except Exception as e:
-            print(f"Failed to send {product} to {chat}: {e}")
+            # print(f"Failed to send {product} to {chat}: {e}")
             return False
 
-    def _get_products_to_send(
+    def _set_message_queue(
         self,
-    ) -> List[
-        Tuple[
-            core_models.NotifiedProduct,
-            Dict[core_models.Chat, List[core_models.Keyword]],
-        ]
-    ]:
+    ) -> List[Tuple[core_models.Message, int]]:
+        # TODO: What if you have products that have no active chats ???
+
+        # TODO: Separate - should we do something different if we get 429 ???
         products = core_models.NotifiedProduct.objects.filter(
             status=core_models.NotifiedProduct.Status.QUEUED
         ).prefetch_related("keywords__user__chats")
-        products_chats_keywords = []
+        messages = []
         for product in products:
             chats_keywords = {}
 
+            # TODO: REFACTOR!!!! with tests first tho...
             matched_keywords = product.keywords.all()
             for matched_keyword in matched_keywords:
+                # Facilitates users having multiple chats
                 chats = matched_keyword.user.chats.all()
 
                 for chat in chats:
@@ -197,9 +192,18 @@ class MessageScheduler:
                     chats_keywords[chat].append(matched_keyword)
 
             if chats_keywords:
-                products_chats_keywords.append((product, chats_keywords))
+                for chat, keywords in chats_keywords.items():
+                    message = core_models.Message(
+                        notified_product=product,
+                        chat=chat,
+                        sender=core_models.Message.Sender.BOT,
+                        # TODO: Temp, use provider and save formatted msg?
+                        # Will pass keywords here...
+                        text=product.product_name,
+                    )
+                    messages.append((message, 0))  # Init retry count at 0
 
-        return products_chats_keywords
+        return messages
 
     @staticmethod
     def _udpate_message_status(message, status):
