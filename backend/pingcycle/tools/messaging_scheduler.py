@@ -2,6 +2,9 @@ import time
 import random
 from typing import Optional, Tuple, List, Dict
 
+from django.db import transaction
+
+from config.settings import MAX_RETRIES_PER_MESSAGE
 from pingcycle.tools.messaging_providers import MessagingProvider
 import pingcycle.apps.core.models as core_models
 
@@ -37,7 +40,9 @@ class MessageScheduler:
         )
         self.last_sent_time_per_chat = {}  # Tracks last sent time per chat
         self.last_overall_send_time = 0
-        self.max_retries = 3  # Maximum number of retries per message
+        self.max_retries = (
+            MAX_RETRIES_PER_MESSAGE  # Maximum number of retries per message
+        )
         self.message_queue = self._set_message_queue()
 
     @staticmethod
@@ -92,6 +97,8 @@ class MessageScheduler:
             for _ in range(len(self.message_queue)):
                 current_time = time.time()
 
+                # TODO: Retry count needs to be upated in db !!!
+                # message_queue is just a list!!! cannot get retry_count this way
                 message, retry_count = self.message_queue.pop(0)
                 last_chat_time = self.last_sent_time_per_chat.get(message.chat, 0)
 
@@ -173,46 +180,68 @@ class MessageScheduler:
 
     def _set_message_queue(
         self,
-    ) -> List[Tuple[core_models.Message, int]]:
-        products = core_models.NotifiedProduct.objects.filter(
-            messages_scheduled=False
-        ).prefetch_related("keywords__user__chats")
-        messages = []
-        for product in products:
-            chats_keywords = {}
+    ) -> List[core_models.Message]:
+        self._create_messages()
 
-            # TODO: IMPORTANT
-            # this should only fetch the messages (with retry count from DB)
-            # creating Messages from NotifiedProduct should happen elsewhere
-            # NotifiedProduct status should be changed to bool called 'is_messages_created'
-
-            # TODO: REFACTOR!!!! with tests first tho...
-            matched_keywords = product.keywords.all()
-            for matched_keyword in matched_keywords:
-                # Facilitates users having multiple chats
-                chats = matched_keyword.user.chats.all()
-
-                for chat in chats:
-                    if chat.state != core_models.Chat.State.ACTIVE:
-                        continue
-                    # Initialize the list if the user key doesn't exist
-                    if chat not in chats_keywords:
-                        chats_keywords[chat] = []
-                    chats_keywords[chat].append(matched_keyword)
-
-            if chats_keywords:
-                for chat, keywords in chats_keywords.items():
-                    message = core_models.Message(
-                        notified_product=product,
-                        chat=chat,
-                        sender=core_models.Message.Sender.BOT,
-                        # TODO: Temp, use provider and save formatted msg?
-                        # Will pass keywords here...
-                        text=product.product_name,
-                    )
-                    messages.append((message, 0))  # Init retry count at 0
+        messages = core_models.Message.objects.filter(
+            status=core_models.Message.Status.CREATED,
+            sender=core_models.Message.Sender.BOT,
+        ).exclude(notified_product=None)
 
         return messages
+
+    def _create_messages(
+        self,
+    ):
+        """
+        Creates new messages in the database for any products that have
+        'messages_scheduled' = False; and then sets 'messages_scheduled' to True
+        """
+        with transaction.atomic():
+            products = core_models.NotifiedProduct.objects.filter(
+                messages_scheduled=False
+            ).prefetch_related("keywords__user__chats")
+
+            updated_products = []
+            created_messages = []
+
+            for product in products:
+                chats_keywords = {}
+
+                # TODO: REFACTOR!!!! with tests first tho...
+                matched_keywords = product.keywords.all()
+                for matched_keyword in matched_keywords:
+                    # Facilitates users having multiple chats
+                    chats = matched_keyword.user.chats.all()
+
+                    for chat in chats:
+                        if chat.state != core_models.Chat.State.ACTIVE:
+                            continue
+                        # Initialize the list if the user key doesn't exist
+                        if chat not in chats_keywords:
+                            chats_keywords[chat] = []
+                        chats_keywords[chat].append(matched_keyword)
+
+                if chats_keywords:
+                    for chat, keywords in chats_keywords.items():
+                        message = core_models.Message(
+                            notified_product=product,
+                            chat=chat,
+                            sender=core_models.Message.Sender.BOT,
+                            # TODO: Temp, use provider and save formatted msg?
+                            # Will pass keywords here...
+                            text=product.product_name,
+                        )
+                        created_messages.append(message)
+
+                product.messages_scheduled = True
+                updated_products.append(product)
+
+            core_models.Message.objects.bulk_create(created_messages)
+
+            core_models.NotifiedProduct.objects.bulk_update(
+                updated_products, fields=["messages_scheduled"]
+            )
 
     @staticmethod
     def _udpate_message_status(message, status):

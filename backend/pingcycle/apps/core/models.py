@@ -7,6 +7,7 @@ from django.db import models, IntegrityError
 from django.conf import settings
 from django.db.models import Q
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 from rest_framework.exceptions import ValidationError
 
@@ -14,6 +15,7 @@ from config.settings import (
     MAX_KEYWORDS_PER_USER,
     CHAT_TEMP_UUID_MAX_VALID_SECONDS,
     MAX_CHATS_PER_USER,
+    MAX_RETRIES_PER_MESSAGE,
 )
 
 
@@ -213,6 +215,10 @@ class Message(models.Model):
     sender = models.CharField(max_length=30, choices=Sender.choices)
     status = models.CharField(
         max_length=30, choices=Status.choices, default=Status.CREATED
+    )
+    retry_count = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(MAX_RETRIES_PER_MESSAGE)],
     )
     error_msg = models.CharField(null=True)
 

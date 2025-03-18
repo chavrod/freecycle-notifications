@@ -262,3 +262,4 @@ if not isinstance(MAX_KEYWORDS_PER_USER, int):
         f"'MAX_KEYWORDS_PER_USER' needs to be an integer, but got: {MAX_KEYWORDS_PER_USER}"
     )
 CHAT_TEMP_UUID_MAX_VALID_SECONDS = 20
+MAX_RETRIES_PER_MESSAGE = 3
