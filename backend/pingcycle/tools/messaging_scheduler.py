@@ -175,7 +175,7 @@ class MessageScheduler:
         self,
     ) -> List[Tuple[core_models.Message, int]]:
         products = core_models.NotifiedProduct.objects.filter(
-            status=core_models.NotifiedProduct.Status.QUEUED
+            messages_scheduled=False
         ).prefetch_related("keywords__user__chats")
         messages = []
         for product in products:
@@ -217,6 +217,3 @@ class MessageScheduler:
     @staticmethod
     def _udpate_message_status(message, status):
         pass
-        # TODO: ...pre-create messages.. Update db in bulk? Test...
-        # product.status = core_models.NotifiedProduct.Status.SENT
-        # product.save(update_fields=["status"])

@@ -70,13 +70,8 @@ class Keyword(models.Model):
 
 
 class NotifiedProduct(models.Model):
-    class Status(models.TextChoices):
-        QUEUED = "QUEUED"
-        SENT = "SENT"
-        SENDING_FAILED = "SENDING_FAILED"
-
+    messages_scheduled = models.BooleanField(default=False)
     product_name = models.CharField(max_length=200)
-    status = models.CharField(max_length=30, choices=Status.choices)
     external_id = models.IntegerField()
     description = models.TextField(null=True)
     location = models.CharField(max_length=200)

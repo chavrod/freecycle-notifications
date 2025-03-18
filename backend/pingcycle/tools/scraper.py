@@ -128,7 +128,6 @@ class Scraper:
             if matched_keywords:
                 notified_product = core_models.NotifiedProduct.objects.create(
                     product_name=product_name,
-                    status=core_models.NotifiedProduct.Status.QUEUED,
                     external_id=product_id,
                     description=description,
                     location=town_name,

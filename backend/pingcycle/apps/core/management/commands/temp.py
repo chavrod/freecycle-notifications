@@ -69,7 +69,6 @@ class Command(BaseCommand):
 
         notified_product_1 = core_models.NotifiedProduct.objects.create(
             product_name="notified_product_1",
-            status=core_models.NotifiedProduct.Status.QUEUED,
             external_id=1,
             location="Dub",
         )
@@ -80,7 +79,6 @@ class Command(BaseCommand):
 
         notified_product_2 = core_models.NotifiedProduct.objects.create(
             product_name="notified_product_2",
-            status=core_models.NotifiedProduct.Status.QUEUED,
             external_id=2,
             location="Dub",
         )
@@ -90,9 +88,9 @@ class Command(BaseCommand):
         notified_product_2.save()
 
         def get_products_to_send():
-            products = core_models.NotifiedProduct.objects.filter(
-                status=core_models.NotifiedProduct.Status.QUEUED
-            ).prefetch_related("keywords__user__chats")
+            products = core_models.NotifiedProduct.objects.filter().prefetch_related(
+                "keywords__user__chats"
+            )
             products_chats_keywords = []
             for product in products:
                 chats_keywords = {}
