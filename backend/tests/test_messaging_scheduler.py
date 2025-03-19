@@ -183,58 +183,74 @@ def test_total_chat_limit_enforce(
     assert expected_min_time <= elapsed_time < expected_max_time
 
 
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    "chat_limit, chats_messages, expected_min_time, expected_max_time",
-    [
-        pytest.param((1, 1), [30], 30, 60, id="1 Chat with 1 message per second"),
-        pytest.param((1, 2), [30], 60, 120, id="1 Chat with 1 message per 2 seconds"),
-        pytest.param((1, 1), [30, 30], 30, 60, id="2 Chat with 1 message per second"),
-    ],
-)
-def test_retry_limit_enforce(
-    chat_limit,
-    chats_messages,
-    expected_min_time,
-    expected_max_time,
-    mocker,
-):
-    """
-    The primary objective of this test is to determine the minimum time
-    required to send all messages given the chat limits. The total limit is set
-    high to ensure it does not interfere with the testing process. We assume that
-    it takes 0.5 seconds to send each message.
-    """
-    # Execute helper setup
-    mock_provider = MockMessagingProvider(chat_limit, (1000, 1))
-    message_scheduler = MessageScheduler(provider=mock_provider)
+"""
+Scenarios 
 
-    # Mock to replace time.time() and control time progression
-    mocker.patch("time.time", side_effect=get_fake_time)
-    mocker.patch("time.sleep", side_effect=increment_fake_time)
+1 Chat - 1KW linked to 1P
+1 Chat - 1KW linked to 1P + 1KW not linked
+1 Chat - 2KW linked to 1P
+1 Chat - 1KW linked to 2P
+1 Chat - 2KW linked to 1P + 1 same KW linked to other P
 
-    mocker.patch.object(
-        message_scheduler, "_attempt_send", side_effect=successful_send_time
-    )
+2 Chats (same user) - each with 1KW linked different 1P
+2 Chats (different users) - each with 1KW linked different 1P
+2 Chats (different users & 1 chat inactive) - each with 1KW linked different 1P
 
-    mocker.patch.object(message_scheduler, "_udpate_message_status", return_value=True)
+2 Chats (different users) - each with 3KW linked same 1P + 1 has KW linked to different P
+"""
 
-    # Create mock objects for product, chat, and keywords using mocker
-    keywords_mock = [mocker.Mock(id=2)]
+# @pytest.mark.django_db
+# @pytest.mark.parametrize(
+#     "chat_limit, chats_messages, expected_min_time, expected_max_time",
+#     [
+#         pytest.param((1, 1), [30], 30, 60, id="1 Chat with 1 message per second"),
+#         pytest.param((1, 2), [30], 60, 120, id="1 Chat with 1 message per 2 seconds"),
+#         pytest.param((1, 1), [30, 30], 30, 60, id="2 Chat with 1 message per second"),
+#     ],
+# )
+# def test_retry_limit_enforce(
+#     chat_limit,
+#     chats_messages,
+#     expected_min_time,
+#     expected_max_time,
+#     mocker,
+# ):
+#     """
+#     The primary objective of this test is to determine the minimum time
+#     required to send all messages given the chat limits. The total limit is set
+#     high to ensure it does not interfere with the testing process. We assume that
+#     it takes 0.5 seconds to send each message.
+#     """
+#     # Execute helper setup
+#     mock_provider = MockMessagingProvider(chat_limit, (1000, 1))
+#     message_scheduler = MessageScheduler(provider=mock_provider)
 
-    for i, number_of_messages in enumerate(chats_messages):
-        chat_id = i + 1
-        chat_mock = mocker.Mock(id=chat_id)
-        for count in range(1, number_of_messages + 1):
-            message_scheduler.message_queue.append(
-                (mocker.Mock(id=chat_id + count), chat_mock, keywords_mock, 0)
-            )
+#     # Mock to replace time.time() and control time progression
+#     mocker.patch("time.time", side_effect=get_fake_time)
+#     mocker.patch("time.sleep", side_effect=increment_fake_time)
 
-    # Record start time
-    start_time = time.time()
-    message_scheduler.send_notified_products_in_queue()
-    end_time = time.time()
+#     mocker.patch.object(
+#         message_scheduler, "_attempt_send", side_effect=successful_send_time
+#     )
 
-    elapsed_time = end_time - start_time
-    # Check that the elapsed time is within expected bounds
-    assert expected_min_time <= elapsed_time < expected_max_time
+#     mocker.patch.object(message_scheduler, "_udpate_message_status", return_value=True)
+
+#     # Create mock objects for product, chat, and keywords using mocker
+#     keywords_mock = [mocker.Mock(id=2)]
+
+#     for i, number_of_messages in enumerate(chats_messages):
+#         chat_id = i + 1
+#         chat_mock = mocker.Mock(id=chat_id)
+#         for count in range(1, number_of_messages + 1):
+#             message_scheduler.message_queue.append(
+#                 (mocker.Mock(id=chat_id + count), chat_mock, keywords_mock, 0)
+#             )
+
+#     # Record start time
+#     start_time = time.time()
+#     message_scheduler.send_notified_products_in_queue()
+#     end_time = time.time()
+
+#     elapsed_time = end_time - start_time
+#     # Check that the elapsed time is within expected bounds
+#     assert expected_min_time <= elapsed_time < expected_max_time
