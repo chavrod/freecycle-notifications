@@ -220,6 +220,7 @@ class Message(models.Model):
         default=0,
         validators=[MinValueValidator(0), MaxValueValidator(MAX_RETRIES_PER_MESSAGE)],
     )
+    error_res_code = models.CharField(null=True)
     error_msg = models.CharField(null=True)
 
     def __str__(self):
