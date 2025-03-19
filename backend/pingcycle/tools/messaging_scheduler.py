@@ -97,9 +97,7 @@ class MessageScheduler:
             for _ in range(len(self.message_queue)):
                 current_time = time.time()
 
-                # TODO: Retry count needs to be upated in db !!!
-                # message_queue is just a list!!! cannot get retry_count this way
-                message, retry_count = self.message_queue.pop(0)
+                message = self.message_queue.pop(0)
                 last_chat_time = self.last_sent_time_per_chat.get(message.chat, 0)
 
                 chat_interval_passed = (
@@ -112,18 +110,26 @@ class MessageScheduler:
                 if chat_interval_passed and total_interval_passed:
                     result = self._attempt_send(message)
                     if result["is_ok"]:
-                        self._udpate_message_status()
+                        self._udpate_message_status(
+                            message=message, status=core_models.Message.Status.SENT
+                        )
                         self.last_sent_time_per_chat[message.chat] = result["time_sent"]
                         self.last_overall_send_time = result["time_sent"]
                     else:
-                        retry_count += 1
-                        if retry_count <= self.max_retries:
-                            self.message_queue.append((message, retry_count))
+                        message.retry_count += 1
+                        if message.retry_count <= self.max_retries:
+                            # Return item back to the queue if below retry limit
+                            self.message_queue.append(message)
                         else:
-                            self._udpate_message_status()
+                            self._udpate_message_status(
+                                message=message,
+                                status=core_models.Message.Status.FAILED,
+                                error_obj=result["error_obj"],
+                            )
+                        message.save(update_fields=["retry_count"])
                 else:
                     # If not sent, return the item back to the queue
-                    self.message_queue.append((message, retry_count))
+                    self.message_queue.append(message)
                     # Sleep if total limit exceeded
                     if not total_interval_passed:
                         time.sleep(
@@ -220,7 +226,7 @@ class MessageScheduler:
                         # Initialize the list if the user key doesn't exist
                         if chat not in chats_keywords:
                             chats_keywords[chat] = []
-                        chats_keywords[chat].append(matched_keyword)
+                        chats_keywords[chat].append(matched_keyword.name)
 
                 if chats_keywords:
                     for chat, keywords in chats_keywords.items():
@@ -230,7 +236,7 @@ class MessageScheduler:
                             sender=core_models.Message.Sender.BOT,
                             # TODO: Temp, use provider and save formatted msg?
                             # Will pass keywords here...
-                            text=product.product_name,
+                            text=f"{product.product_name} {" ".join(keywords)}",
                         )
                         created_messages.append(message)
 
@@ -244,5 +250,18 @@ class MessageScheduler:
             )
 
     @staticmethod
-    def _udpate_message_status(message, status):
-        pass
+    def _udpate_message_status(
+        message: core_models.Message,
+        status: core_models.Message.Status,
+        error_obj: Optional[dict],
+    ):
+        message.status = status
+        update_fields = ["status"]
+
+        # Check if error_obj is provided and update if it is
+        if error_obj is not None:
+            message.error_res_code = error_obj["error_res_code"]
+            message.error_msg = error_obj["error_msg"]
+            update_fields.extend("error_res_code", "error_msg")
+
+        message.save(update_fields=update_fields)
