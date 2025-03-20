@@ -194,7 +194,7 @@ class MessageScheduler:
             sender=core_models.Message.Sender.BOT,
         ).exclude(notified_product=None)
 
-        return messages
+        return list(messages)
 
     def _create_messages(
         self,
@@ -236,7 +236,7 @@ class MessageScheduler:
                             sender=core_models.Message.Sender.BOT,
                             # TODO: Temp, use provider and save formatted msg?
                             # Will pass keywords here...
-                            text=f"{product.product_name} {" ".join(keywords)}",
+                            text=f"{product.product_name} {' '.join(keywords)}",
                         )
                         created_messages.append(message)
 
@@ -253,7 +253,7 @@ class MessageScheduler:
     def _udpate_message_status(
         message: core_models.Message,
         status: core_models.Message.Status,
-        error_obj: Optional[dict],
+        error_obj: Optional[dict] = None,
     ):
         message.status = status
         update_fields = ["status"]
