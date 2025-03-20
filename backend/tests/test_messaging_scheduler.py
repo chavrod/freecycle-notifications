@@ -1,47 +1,9 @@
-"""
-Test 1: Per chat Limit test_chat_limit_enforce
-
-  Case 1:
-    Chat input:
-      1 chat with 30 messages (products) per chat
-    Limits:
-      Chat Limit is 1 per second
-      Total Limit is 30 per second
-    Assertion
-      Takes over 30 seconds and under 60 seconds to send all messages
-
-  Case 2
-    Chat input:
-      1 chat with 30 messages (products) per chat
-    Limits:
-      Chat Limit is 2 per second
-      Total Limit is 30 per second
-    Assertion
-      Takes over 60 seconds and under 120 seconds to send all messages
-
-  Case 3
-    Chat input:
-      1st chat with 30 messages (products) per chat
-      2nd chat with 30 messages (products) per chat
-    Limits:
-      Chat Limit is 1 per second
-      Total Limit is 30 per second
-    Assertion
-      Takes over 30 seconds and under 60 seconds to send all messages
-
-test 1
- -> Chat Limit is 1 per second
- -> Total Limit is 30 per second
- Assert it takes over
- test 2
-->
-"""
-
 import time
 
 import pytest
 
 from pingcycle.tools.messaging_scheduler import MessageScheduler
+import pingcycle.apps.core.models as core_models
 
 
 # Define a mock MessagingProvider for testing purposes
@@ -183,74 +145,105 @@ def test_total_chat_limit_enforce(
     assert expected_min_time <= elapsed_time < expected_max_time
 
 
-"""
-Scenarios 
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "inputs, assert_messages",
+    [
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [{"reference": "chat_1_user1"}],
+                    "keywords_products": {
+                        "apple": [{"product_name": "apple pie", "external_id": 1}]
+                    },
+                }
+            ],
+            [
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                }
+            ],
+            id="1 Chat - 1KW linked to 1P",
+        ),
+    ],
+)
+def test_messages_created(
+    inputs,
+    assert_messages,
+    get_or_create_user_chats_keywords_products,
+    mocker,
+):
+    """
+    This is an integration test to see how many messages get sent,
+    based on number of products, linked keywords, and chats.
 
-1 Chat - 1KW linked to 1P
-1 Chat - 1KW linked to 1P + 1KW not linked
-1 Chat - 2KW linked to 1P
-1 Chat - 1KW linked to 2P
-1 Chat - 2KW linked to 1P + 1 same KW linked to other P
+    Scenarios
 
-2 Chats (same user) - each with 1KW linked different 1P
-2 Chats (different users) - each with 1KW linked different 1P
-2 Chats (different users & 1 chat inactive) - each with 1KW linked different 1P
+    1 Chat - 1KW linked to 1P
+    1 Chat - 1KW linked to 1P + 1KW not linked
+    1 Chat - 1KW linked to 1P + 1KW linked to 1P (with messages_scheduled == True)
+    1 Chat - 2KW linked to 1P
+    1 Chat - 1KW linked to 2P
+    1 Chat - 2KW linked to 1P + 1 same KW linked to other P
 
-2 Chats (different users) - each with 3KW linked same 1P + 1 has KW linked to different P
-"""
+    2 Chats (same user) - 1KW linked to 1P
+    2 Chats (different users) - each with 1KW linked to same 1P
+    2 Chats (different users) - each with 1KW linked to different 1P
+    2 Chats (different users & 1 chat inactive) - each with 1KW linked different 1P
 
-# @pytest.mark.django_db
-# @pytest.mark.parametrize(
-#     "chat_limit, chats_messages, expected_min_time, expected_max_time",
-#     [
-#         pytest.param((1, 1), [30], 30, 60, id="1 Chat with 1 message per second"),
-#         pytest.param((1, 2), [30], 60, 120, id="1 Chat with 1 message per 2 seconds"),
-#         pytest.param((1, 1), [30, 30], 30, 60, id="2 Chat with 1 message per second"),
-#     ],
-# )
-# def test_retry_limit_enforce(
-#     chat_limit,
-#     chats_messages,
-#     expected_min_time,
-#     expected_max_time,
-#     mocker,
-# ):
-#     """
-#     The primary objective of this test is to determine the minimum time
-#     required to send all messages given the chat limits. The total limit is set
-#     high to ensure it does not interfere with the testing process. We assume that
-#     it takes 0.5 seconds to send each message.
-#     """
-#     # Execute helper setup
-#     mock_provider = MockMessagingProvider(chat_limit, (1000, 1))
-#     message_scheduler = MessageScheduler(provider=mock_provider)
+    2 Chats (different users) - each with 3KW linked same 1P + 1 has KW linked to different P
+    """
+    # ARRANGE
 
-#     # Mock to replace time.time() and control time progression
-#     mocker.patch("time.time", side_effect=get_fake_time)
-#     mocker.patch("time.sleep", side_effect=increment_fake_time)
+    # Create db objects
+    for input in inputs:
+        get_or_create_user_chats_keywords_products(
+            input["username"], input["chats"], input["keywords_products"]
+        )
 
-#     mocker.patch.object(
-#         message_scheduler, "_attempt_send", side_effect=successful_send_time
-#     )
+    mock_provider = MockMessagingProvider((1000, 1), (2000, 1))
+    message_scheduler = MessageScheduler(provider=mock_provider)
 
-#     mocker.patch.object(message_scheduler, "_udpate_message_status", return_value=True)
+    mocker.patch.object(
+        message_scheduler, "_attempt_send", side_effect=successful_send_time
+    )
 
-#     # Create mock objects for product, chat, and keywords using mocker
-#     keywords_mock = [mocker.Mock(id=2)]
+    # ACT
+    message_scheduler.send_notified_products_in_queue()
 
-#     for i, number_of_messages in enumerate(chats_messages):
-#         chat_id = i + 1
-#         chat_mock = mocker.Mock(id=chat_id)
-#         for count in range(1, number_of_messages + 1):
-#             message_scheduler.message_queue.append(
-#                 (mocker.Mock(id=chat_id + count), chat_mock, keywords_mock, 0)
-#             )
+    # ASSERT
 
-#     # Record start time
-#     start_time = time.time()
-#     message_scheduler.send_notified_products_in_queue()
-#     end_time = time.time()
+    # Assert all product statues have been updated
+    all_messages_count = core_models.Message.objects.all().count()
+    sent_messages_count = core_models.Message.objects.filter(
+        status=core_models.Message.Status.SENT
+    ).count()
+    print("all_messages_count: ", all_messages_count)
 
-#     elapsed_time = end_time - start_time
-#     # Check that the elapsed time is within expected bounds
-#     assert expected_min_time <= elapsed_time < expected_max_time
+    assert all_messages_count == sent_messages_count, "Expected all messages to be sent"
+
+    # Per message assertions
+    for assert_message in assert_messages:
+        try:
+            message = core_models.Message.objects.get(
+                notified_product__product_name=assert_message["product_name"],
+                chat__reference=assert_message["chat_reference"],
+            )
+        except core_models.Message.DoesNotExist:
+            assert (
+                False
+            ), f"Expected to have message with chat ref: {assert_message['chat_reference']} and linked to product: {assert_message['product_name']}"
+
+        assert (
+            message.status == assert_message["status"]
+        ), f"Expected message to have status {assert_message['status']}"
+
+        message_text = message.text
+        for keyword in assert_message["linked_keywords"]:
+            assert (
+                keyword in message_text
+            ), f"Expected {keyword} to be present in the message text"
