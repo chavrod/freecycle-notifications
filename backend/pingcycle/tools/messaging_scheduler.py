@@ -8,17 +8,6 @@ from config.settings import MAX_RETRIES_PER_MESSAGE
 from pingcycle.tools.messaging_providers import MessagingProvider
 import pingcycle.apps.core.models as core_models
 
-# TODO: Retry logic??? yes!
-
-# TELEGRAM RATE LIMITS
-# 30 per second
-# 1 per chat per second
-
-# Add tests
-# - we stay within limits for many messages
-# - we attempt to retry X times after Y seconds
-# - correct mesages are being sent (with correct keywords) + products marked as sent
-
 
 class MessageSchedulerValidationError(Exception):
     def __init__(self, *args):
@@ -35,6 +24,8 @@ class MessageScheduler:
     # TODO: Raising error for chat intervals should be on boot + test
 
     def __init__(self, provider: MessagingProvider):
+        self.chat_provider = provider
+
         self.chat_interval, self.total_interval = self._set_intervals(
             provider.CHAT_LIMIT_SECONDS, provider.TOTAL_LIMIT_SECONDS
         )
@@ -165,17 +156,17 @@ class MessageScheduler:
 
     def _attempt_send(self, message) -> dict:
         try:
-            # Simulate potential network issues
-            if random.choice([True, False]):
-                raise Exception("Network issue occurred")
-
-            # print(
-            #     f"Sent message for product {product} to chat {chat} with keywords {keywords}"
-            # )
-            return True
+            return self.chat_provider.send_message(message)
         except Exception as e:
-            # print(f"Failed to send {product} to {chat}: {e}")
-            return False
+            # TODO: SENTRY - should not happen
+            # TODO: Should formatting be standardised into error object???
+            return {
+                "is_ok": False,
+                "error_obj": {
+                    "error_res_code": 500,
+                    "error_msg": f"Internal error: {e}",
+                },
+            }
 
     def _set_message_queue(
         self,
@@ -227,9 +218,7 @@ class MessageScheduler:
                             notified_product=product,
                             chat=chat,
                             sender=core_models.Message.Sender.BOT,
-                            # TODO: Temp, use provider and save formatted msg?
-                            # Will pass keywords here...
-                            text=f"{product.product_name} Linked Keywords: {', '.join(keywords)}",
+                            text=product.get_formatted_message(users_keywrods=keywords),
                         )
                         created_messages.append(message)
 

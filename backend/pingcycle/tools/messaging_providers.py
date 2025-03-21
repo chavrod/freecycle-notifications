@@ -2,6 +2,7 @@ from datetime import timedelta
 from typing import Optional, Tuple, List, Dict
 import requests
 import uuid
+import time
 
 from django.utils import timezone
 from django.db import transaction
@@ -86,12 +87,6 @@ class MessagingProvider:
         raise NotImplementedError(
             f"{self.__class__.__name__}.health_check() not implemented."
         )
-
-    # TODO: Format product message
-    def _set_formatted_product_message_text(self, message: core_models.Message):
-        return message.text
-        message.text = result
-        message.save()
 
     def _receive_message(self, data):
         chat, created = self._get_or_create_chat(data)
@@ -188,23 +183,32 @@ class Telegram(MessagingProvider):
 
     def _post_api(self, method_name: str, **params):
         """
-        Makes POST request to Telegram API with the provided method name and additional parameters,
-        and returns JSON.
+        Makes a POST request to the Telegram API using the specified method name and additional parameters.
 
-        :param method_name: The API method name to call.
-        :param params: Additional parameters for the API request.
-        :return: JSON response from the API.
-        :raises: Exception if the response status code is not 200.
+        :param method_name: The name of the API method to call.
+        :param params: Additional parameters for the API request, passed as keyword arguments.
+        :return: A dictionary with:
+            - "is_ok" (bool): True if the request was successful, False otherwise.
+            - "time_sent" (datetime): Present only if successful, indicating when the request was sent.
+            - "error_obj" (dict): Present only if unsuccessful, containing:
+              - "error_res_code" (int): The HTTP status code.
+              - "error_msg" (str): The response content as text.
         """
         url = f"{self.api_url}/bot{self.bot_token}/{method_name}"
         res = requests.post(url, json=params)
 
         status_code = res.status_code
-        assert (
-            status_code == 200
-        ), f"Expected 200 for {method_name} (params: {params}) but got {status_code} {res.text}"
 
-        return res.json()
+        if status_code == 200:
+            return {"is_ok": True, "time_sent": time.time(), "msg": res.json()}
+        else:
+            return {
+                "is_ok": False,
+                "error_obj": {
+                    "error_res_code": status_code,
+                    "error_msg": res.text,
+                },
+            }
 
     def handle_webhook(self, request: requests.Request):
         print("RECEIVED MESSAGE")
@@ -219,7 +223,8 @@ class Telegram(MessagingProvider):
 
                 self._receive_message(data)
             except UserFriendlyChatError as e:
-                self._post_api(
+                # TODO: We should check if res not ok?
+                res = self._post_api(
                     "sendMessage",
                     chat_id=e.chat_reference,
                     text=e.message,
@@ -304,7 +309,7 @@ class Telegram(MessagingProvider):
             return data["message"].get("text")
 
     def send_message(self, message: core_models.Message):
-        self._post_api(
+        return self._post_api(
             "sendMessage",
             chat_id=message.chat.reference,
             text=message.text,

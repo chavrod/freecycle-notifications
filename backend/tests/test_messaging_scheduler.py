@@ -680,7 +680,7 @@ def test_messages_created(
 
         # Check for the presence of the linked keywords in message text
         message_text = message.text
-        marker = "Linked Keywords:"
+        marker = "**Linked Keywords:**"
         marker_index = message_text.index(marker)
         keywords_in_text = message_text[marker_index + len(marker) :].strip()
         keywords_list = [kw.strip() for kw in keywords_in_text.split(",")]

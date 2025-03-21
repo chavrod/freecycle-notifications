@@ -5,7 +5,7 @@ from typing import Optional
 from django.utils import timezone
 from django.db import models, IntegrityError
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.core.validators import MinValueValidator, MaxValueValidator
 
@@ -87,6 +87,28 @@ class NotifiedProduct(models.Model):
 
     def __str__(self):
         return f"{self.product_name} in {self.sublocation} ({self.location}) - {self.created.strftime('%d-%m-%Y')} - {self.get_full_url()}"
+
+    def get_formatted_message(self, users_keywrods: QuerySet[Keyword]):
+        """
+        Formats all of the relevant product data and only includes
+        keywords passed as an argument (related to specific user)
+
+        # TODO: Implemenation could be improved
+        """
+        # Retrieve keywords and join them with commas
+        keywords_list = list(users_keywrods)
+        joined_keywords = ", ".join(keywords_list) if keywords_list else "No keywords"
+
+        # Using Markdown v1
+        message = (
+            f"*{self.product_name}*\n\n"
+            f"{self.description or 'No description available'}\n\n"
+            f"📍 *Location:* {self.location}{f', {self.sublocation.title()}' if self.sublocation else ''}\n"
+            f"🔑 *Linked Keywords:* {joined_keywords}\n\n"
+            f"[{self.get_full_url()}]({self.get_full_url()})\n"
+        )
+
+        return message
 
 
 class Chat(models.Model):
