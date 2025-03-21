@@ -6,6 +6,8 @@ from .models import Keyword, Chat
 
 
 class KeywordsSerializer(serializers.ModelSerializer):
+    messages_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Keyword
         exclude = ["user"]

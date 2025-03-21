@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.middleware.csrf import get_token
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from django.db.models import Count
 
 from rest_framework import status, viewsets
 from rest_framework.response import Response
@@ -30,7 +31,9 @@ class KeywordsViewSet(
     permission_classes = [IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
-        user_keywords = Keyword.objects.filter(user=request.user)
+        user_keywords = Keyword.objects.filter(user=request.user).annotate(
+            messages_count=Count("notified_products__messages")
+        )
         serializer = KeywordsSerializer(user_keywords, many=True)
         return Response({"keywords": serializer.data})
 

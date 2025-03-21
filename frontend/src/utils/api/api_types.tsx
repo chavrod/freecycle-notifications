@@ -2,6 +2,7 @@ export interface Keyword {
   id: number;
   name: string;
   created: string;
+  messages_count: number;
 }
 
 export enum ChatStateType {

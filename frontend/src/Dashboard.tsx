@@ -169,7 +169,7 @@ export default function DashboardPage() {
                     <Text c="grey">•</Text>
                     <Group gap={8}>
                       <IconBrandTelegram color="grey" size={20} stroke={1.8} />
-                      <Text c="grey">12,000</Text>
+                      <Text c="grey">{keyword.messages_count}</Text>
                     </Group>
                   </Group>
                 </Stack>
