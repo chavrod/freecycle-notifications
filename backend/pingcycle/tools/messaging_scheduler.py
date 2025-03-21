@@ -117,7 +117,7 @@ class MessageScheduler:
                         self.last_overall_send_time = result["time_sent"]
                     else:
                         message.retry_count += 1
-                        if message.retry_count <= self.max_retries:
+                        if message.retry_count < self.max_retries:
                             # Return item back to the queue if below retry limit
                             self.message_queue.append(message)
                         else:
@@ -155,7 +155,7 @@ class MessageScheduler:
                             )
                         ),
                     )
-                    for message, _ in self.message_queue
+                    for message in self.message_queue
                 ]
 
                 wait_time = min(next_chat_intervals)
@@ -236,7 +236,7 @@ class MessageScheduler:
                             sender=core_models.Message.Sender.BOT,
                             # TODO: Temp, use provider and save formatted msg?
                             # Will pass keywords here...
-                            text=f"{product.product_name} {' '.join(keywords)}",
+                            text=f"{product.product_name} Linked Keywords: {', '.join(keywords)}",
                         )
                         created_messages.append(message)
 
@@ -262,6 +262,6 @@ class MessageScheduler:
         if error_obj is not None:
             message.error_res_code = error_obj["error_res_code"]
             message.error_msg = error_obj["error_msg"]
-            update_fields.extend("error_res_code", "error_msg")
+            update_fields.extend(["error_res_code", "error_msg"])
 
         message.save(update_fields=update_fields)

@@ -26,12 +26,26 @@ def increment_fake_time(amount):
     return fake_time[0]
 
 
-# Mock the send attempt as always successful
-def successful_send_time(*args, **kwargs):
+# Mock the res of a send attempt
+def message_send_res_success(*args, **kwargs):
     current_time = fake_time[0]
     # Increment new fake time and return the message set time
     fake_time[0] = current_time + 0.5
     return {"is_ok": True, "time_sent": current_time + 0.5}
+
+
+TEST_SEND_MESSAGE_ERROR_RES_CODE = 400
+TEST_SEND_MESSAGE_ERROR_RES_TEXT = "Test Error Text"
+
+
+def message_send_res_error(*args, **kwargs):
+    return {
+        "is_ok": False,
+        "error_obj": {
+            "error_res_code": TEST_SEND_MESSAGE_ERROR_RES_CODE,
+            "error_msg": TEST_SEND_MESSAGE_ERROR_RES_TEXT,
+        },
+    }
 
 
 @pytest.mark.django_db
@@ -65,7 +79,7 @@ def test_individual_chat_limit_enforce(
     mocker.patch("time.sleep", side_effect=increment_fake_time)
 
     mocker.patch.object(
-        message_scheduler, "_attempt_send", side_effect=successful_send_time
+        message_scheduler, "_attempt_send", side_effect=message_send_res_success
     )
 
     mocker.patch.object(message_scheduler, "_udpate_message_status", return_value=True)
@@ -77,7 +91,7 @@ def test_individual_chat_limit_enforce(
         for count in range(1, number_of_messages + 1):
             message_mock = mocker.Mock(id=count * chat_id)
             type(message_mock).chat = mocker.PropertyMock(return_value=chat_mock)
-            message_scheduler.message_queue.append((message_mock, 0))
+            message_scheduler.message_queue.append(message_mock)
 
     # Record start time
     start_time = time.time()
@@ -122,7 +136,7 @@ def test_total_chat_limit_enforce(
     mocker.patch("time.sleep", side_effect=increment_fake_time)
 
     mocker.patch.object(
-        message_scheduler, "_attempt_send", side_effect=successful_send_time
+        message_scheduler, "_attempt_send", side_effect=message_send_res_success
     )
 
     mocker.patch.object(message_scheduler, "_udpate_message_status", return_value=True)
@@ -133,7 +147,7 @@ def test_total_chat_limit_enforce(
         chat_mock = mocker.Mock(id=id)
         type(message_mock).chat = mocker.PropertyMock(return_value=chat_mock)
 
-        message_scheduler.message_queue.append((message_mock, 0))
+        message_scheduler.message_queue.append(message_mock)
 
     # Record start time
     start_time = time.time()
@@ -169,6 +183,412 @@ def test_total_chat_limit_enforce(
             ],
             id="1 Chat - 1KW linked to 1P",
         ),
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [{"reference": "chat_1_user1"}],
+                    "keywords_products": {
+                        "apple": [{"product_name": "apple pie", "external_id": 1}],
+                        "orange": [],
+                    },
+                }
+            ],
+            [
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                }
+            ],
+            id="1 Chat - 1KW linked to 1P + 1KW not linked",
+        ),
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [{"reference": "chat_1_user1"}],
+                    "keywords_products": {
+                        "apple": [{"product_name": "apple pie", "external_id": 1}],
+                        "orange": [
+                            {
+                                "product_name": "orange cake",
+                                "external_id": 2,
+                                "messages_scheduled": True,
+                            }
+                        ],
+                    },
+                }
+            ],
+            [
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                }
+            ],
+            id="1 Chat - 1KW linked to 1P + 1KW linked to 1P (with messages_scheduled == True)",
+        ),
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [{"reference": "chat_1_user1"}],
+                    "keywords_products": {
+                        "apple": [{"product_name": "apple pie", "external_id": 1}],
+                        "pie": [
+                            {
+                                "product_name": "apple pie",
+                                "external_id": 1,
+                            }
+                        ],
+                    },
+                }
+            ],
+            [
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple", "pie"],
+                    "status": core_models.Message.Status.SENT,
+                }
+            ],
+            id="1 Chat - 2KW linked to 1P",
+        ),
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [{"reference": "chat_1_user1"}],
+                    "keywords_products": {
+                        "apple": [
+                            {"product_name": "apple pie", "external_id": 1},
+                            {
+                                "product_name": "apple watch",
+                                "external_id": 2,
+                            },
+                        ],
+                    },
+                }
+            ],
+            [
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                },
+                {
+                    "product_name": "apple watch",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                },
+            ],
+            id="1 Chat - 1KW linked to 2P",
+        ),
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [{"reference": "chat_1_user1"}],
+                    "keywords_products": {
+                        "apple": [
+                            {"product_name": "apple pie", "external_id": 1},
+                            {
+                                "product_name": "apple cake",
+                                "external_id": 2,
+                            },
+                        ],
+                        "pie": [
+                            {"product_name": "apple pie", "external_id": 1},
+                        ],
+                    },
+                }
+            ],
+            [
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple", "pie"],
+                    "status": core_models.Message.Status.SENT,
+                },
+                {
+                    "product_name": "apple cake",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                },
+            ],
+            id="1 Chat - 2KW linked to 1P + 1 same KW linked to other P",
+        ),
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [
+                        {"reference": "chat_1_user1"},
+                        {"reference": "chat_2_user1"},
+                    ],
+                    "keywords_products": {
+                        "apple": [
+                            {"product_name": "apple pie", "external_id": 1},
+                        ]
+                    },
+                }
+            ],
+            [
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                },
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_2_user1",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                },
+            ],
+            id="2 Chats (same user) - 1KW linked to 1P",
+        ),
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [
+                        {"reference": "chat_1_user1"},
+                        {
+                            "reference": "chat_2_user1",
+                            "state": core_models.Chat.State.INACTIVE,
+                        },
+                    ],
+                    "keywords_products": {
+                        "apple": [
+                            {"product_name": "apple pie", "external_id": 1},
+                        ]
+                    },
+                }
+            ],
+            [
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                },
+            ],
+            id="2 Chats (same user & 1 chat inactive) - 1KW linked to 1P",
+        ),
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [
+                        {"reference": "chat_1_user1"},
+                    ],
+                    "keywords_products": {
+                        "apple": [
+                            {"product_name": "apple pie", "external_id": 1},
+                        ]
+                    },
+                },
+                {
+                    "username": "user2",
+                    "chats": [
+                        {"reference": "chat_1_user2"},
+                    ],
+                    "keywords_products": {
+                        "apple": [
+                            {"product_name": "apple pie", "external_id": 1},
+                        ]
+                    },
+                },
+            ],
+            [
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                },
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_1_user2",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                },
+            ],
+            id="2 Chats (different users) - each with 1KW linked to same 1P",
+        ),
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [
+                        {"reference": "chat_1_user1"},
+                    ],
+                    "keywords_products": {
+                        "apple": [
+                            {"product_name": "apple pie", "external_id": 1},
+                        ]
+                    },
+                },
+                {
+                    "username": "user2",
+                    "chats": [
+                        {"reference": "chat_1_user2"},
+                    ],
+                    "keywords_products": {
+                        "cake": [
+                            {"product_name": "orange cake", "external_id": 2},
+                        ]
+                    },
+                },
+            ],
+            [
+                {
+                    "product_name": "apple pie",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple"],
+                    "status": core_models.Message.Status.SENT,
+                },
+                {
+                    "product_name": "orange cake",
+                    "chat_reference": "chat_1_user2",
+                    "linked_keywords": ["cake"],
+                    "status": core_models.Message.Status.SENT,
+                },
+            ],
+            id="2 Chats (different users) - each with 1KW linked to different 1P",
+        ),
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [
+                        {
+                            "reference": "chat_1_user1",
+                            "state": core_models.Chat.State.INACTIVE,
+                        },
+                    ],
+                    "keywords_products": {
+                        "apple": [
+                            {"product_name": "apple pie", "external_id": 1},
+                        ]
+                    },
+                },
+                {
+                    "username": "user2",
+                    "chats": [
+                        {"reference": "chat_1_user2"},
+                    ],
+                    "keywords_products": {
+                        "cake": [
+                            {"product_name": "orange cake", "external_id": 2},
+                        ]
+                    },
+                },
+            ],
+            [
+                {
+                    "product_name": "orange cake",
+                    "chat_reference": "chat_1_user2",
+                    "linked_keywords": ["cake"],
+                    "status": core_models.Message.Status.SENT,
+                },
+            ],
+            id="2 Chats (different users) - each with 1KW linked to different 1P",
+        ),
+        pytest.param(
+            [
+                {
+                    "username": "user1",
+                    "chats": [
+                        {
+                            "reference": "chat_1_user1",
+                        },
+                    ],
+                    "keywords_products": {
+                        "apple": [
+                            {
+                                "product_name": "hot apple pie",
+                                "external_id": 1,
+                            },
+                        ],
+                        "pie": [
+                            {
+                                "product_name": "hot apple pie",
+                                "external_id": 1,
+                            },
+                        ],
+                        "jam": [
+                            {"product_name": "hot banana with jam", "external_id": 2},
+                        ],
+                    },
+                },
+                {
+                    "username": "user2",
+                    "chats": [
+                        {"reference": "chat_1_user2"},
+                    ],
+                    "keywords_products": {
+                        "hot": [
+                            {
+                                "product_name": "hot apple pie",
+                                "external_id": 1,
+                            },
+                            {"product_name": "hot banana with jam", "external_id": 2},
+                        ],
+                        "apple": [
+                            {
+                                "product_name": "hot apple pie",
+                                "external_id": 1,
+                            },
+                        ],
+                        "pie": [
+                            {
+                                "product_name": "hot apple pie",
+                                "external_id": 1,
+                            },
+                        ],
+                        "banana": [
+                            {"product_name": "hot banana with jam", "external_id": 2},
+                        ],
+                    },
+                },
+            ],
+            [
+                {
+                    "product_name": "hot apple pie",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["apple", "pie"],
+                    "status": core_models.Message.Status.SENT,
+                },
+                {
+                    "product_name": "hot apple pie",
+                    "chat_reference": "chat_1_user2",
+                    "linked_keywords": ["hot", "apple", "pie"],
+                    "status": core_models.Message.Status.SENT,
+                },
+                {
+                    "product_name": "hot banana with jam",
+                    "chat_reference": "chat_1_user1",
+                    "linked_keywords": ["jam"],
+                    "status": core_models.Message.Status.SENT,
+                },
+                {
+                    "product_name": "hot banana with jam",
+                    "chat_reference": "chat_1_user2",
+                    "linked_keywords": ["hot", "banana"],
+                    "status": core_models.Message.Status.SENT,
+                },
+            ],
+            id="2 Chats (different users) - variation with many Ps and KWs",
+        ),
     ],
 )
 def test_messages_created(
@@ -191,11 +611,12 @@ def test_messages_created(
     1 Chat - 2KW linked to 1P + 1 same KW linked to other P
 
     2 Chats (same user) - 1KW linked to 1P
+    2 Chats (same user & 1 chat inactive) - 1KW linked to 1P
     2 Chats (different users) - each with 1KW linked to same 1P
     2 Chats (different users) - each with 1KW linked to different 1P
     2 Chats (different users & 1 chat inactive) - each with 1KW linked different 1P
 
-    2 Chats (different users) - each with 3KW linked same 1P + 1 has KW linked to different P
+    2 Chats (different users) - variation with many Ps and KWs
     """
     # ARRANGE
 
@@ -209,7 +630,7 @@ def test_messages_created(
     message_scheduler = MessageScheduler(provider=mock_provider)
 
     mocker.patch.object(
-        message_scheduler, "_attempt_send", side_effect=successful_send_time
+        message_scheduler, "_attempt_send", side_effect=message_send_res_success
     )
 
     # ACT
@@ -218,32 +639,152 @@ def test_messages_created(
     # ASSERT
 
     # Assert all product statues have been updated
-    all_messages_count = core_models.Message.objects.all().count()
+    notified_products_without_scheduled_msg_count = (
+        core_models.NotifiedProduct.objects.filter(messages_scheduled=False)
+    )
+    assert (
+        notified_products_without_scheduled_msg_count.count() == 0
+    ), "Expected all products to have scheduled messages"
+
+    # Assert all messages have been sent
     sent_messages_count = core_models.Message.objects.filter(
         status=core_models.Message.Status.SENT
     ).count()
-    print("all_messages_count: ", all_messages_count)
 
-    assert all_messages_count == sent_messages_count, "Expected all messages to be sent"
+    assert sent_messages_count == len(
+        assert_messages
+    ), f"Expected {len(assert_messages)} to be sent, but sent {sent_messages_count}"
+
+    all_messages_dict = {
+        f"{m.notified_product.product_name}_{m.chat.reference}": m
+        for m in core_models.Message.objects.all()
+        .select_related("notified_product")
+        .select_related("chat")
+    }
 
     # Per message assertions
     for assert_message in assert_messages:
-        try:
-            message = core_models.Message.objects.get(
-                notified_product__product_name=assert_message["product_name"],
-                chat__reference=assert_message["chat_reference"],
-            )
-        except core_models.Message.DoesNotExist:
-            assert (
-                False
-            ), f"Expected to have message with chat ref: {assert_message['chat_reference']} and linked to product: {assert_message['product_name']}"
+        # Find message
+        message_lookup = (
+            f"{assert_message['product_name']}_{assert_message['chat_reference']}"
+        )
+        message = all_messages_dict.get(message_lookup)
+        assert (
+            message is not None
+        ), f"Expected to have message with chat ref: {assert_message['chat_reference']} and linked to product: {assert_message['product_name']}"
 
+        # Assert message status
         assert (
             message.status == assert_message["status"]
         ), f"Expected message to have status {assert_message['status']}"
 
+        # Check for the presence of the linked keywords in message text
         message_text = message.text
+        marker = "Linked Keywords:"
+        marker_index = message_text.index(marker)
+        keywords_in_text = message_text[marker_index + len(marker) :].strip()
+        keywords_list = [kw.strip() for kw in keywords_in_text.split(",")]
+
         for keyword in assert_message["linked_keywords"]:
             assert (
-                keyword in message_text
+                keyword in keywords_list
             ), f"Expected {keyword} to be present in the message text"
+            keywords_list.remove(keyword)
+        # Final assertion to ensure keywords_list is empty
+        assert not keywords_list, "Expected all keywords to be removed from the list"
+
+        all_messages_dict.pop(message_lookup)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "max_retries, number_of_fail_attmepts, assert_message",
+    [
+        pytest.param(
+            3,
+            3,
+            {
+                "status": core_models.Message.Status.FAILED,
+                "retry_count": 3,
+                "error_res_code": TEST_SEND_MESSAGE_ERROR_RES_CODE,
+                "error_msg": TEST_SEND_MESSAGE_ERROR_RES_TEXT,
+            },
+            id="Failed Mesage",
+        ),
+        pytest.param(
+            3,
+            2,
+            {
+                "status": core_models.Message.Status.SENT,
+                "retry_count": 2,
+                "error_res_code": None,
+                "error_msg": None,
+            },
+            id="Succeed With Retries",
+        ),
+        pytest.param(
+            3,
+            0,
+            {
+                "status": core_models.Message.Status.SENT,
+                "retry_count": 0,
+                "error_res_code": None,
+                "error_msg": None,
+            },
+            id="Succeed No Retries",
+        ),
+    ],
+)
+def test_retry_on_fail(
+    max_retries,
+    number_of_fail_attmepts,
+    assert_message,
+    get_or_create_user_chats_keywords_products,
+    mocker,
+):
+    """
+    Create 1 keywrod with 1 Product and adjust the message send response
+    """
+    # ARRANGE
+
+    get_or_create_user_chats_keywords_products()
+
+    mocker.patch(
+        "pingcycle.tools.messaging_scheduler.MAX_RETRIES_PER_MESSAGE", new=max_retries
+    )
+
+    mock_provider = MockMessagingProvider((1000, 1), (2000, 1))
+    message_scheduler = MessageScheduler(provider=mock_provider)
+
+    mocked_responses = []
+    for _ in range(number_of_fail_attmepts):
+        mocked_responses.append(message_send_res_error())
+    mocked_responses.append(message_send_res_success())
+
+    mocker.patch.object(
+        message_scheduler, "_attempt_send", side_effect=mocked_responses
+    )
+
+    # ACT
+    message_scheduler.send_notified_products_in_queue()
+
+    # ASSERT
+
+    # Assert number of messages
+    all_messages = core_models.Message.objects.all()
+    assert all_messages.count() == 1, "Expected to only have 1 message"
+
+    message = all_messages.first()
+
+    assert (
+        message.status == assert_message["status"]
+    ), f"Expected message status to be {assert_message['status']}"
+    assert (
+        message.retry_count == assert_message["retry_count"]
+    ), f"Expected message retry_count to be {assert_message['retry_count']}"
+    assert (
+        message.error_res_code == assert_message["error_res_code"]
+    ), f"Expected message error_res_code to be {assert_message['error_res_code']}"
+    assert (
+        message.error_msg == assert_message["error_msg"]
+    ), f"Expected message error_msg to be {assert_message['error_msg']}"

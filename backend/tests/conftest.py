@@ -11,9 +11,21 @@ User = get_user_model()
 @pytest.fixture
 def get_or_create_user_chats_keywords_products():
     def _get_or_create_user_chats_keywords_products(
-        username: str, chats: list, keywords_products: dict
+        username: str = "user1",
+        chats: list = [
+            {
+                "reference": "chat_1_user1",
+            },
+        ],
+        keywords_products: dict = {
+            "apple": [
+                {
+                    "product_name": "hot apple pie",
+                    "external_id": 1,
+                },
+            ]
+        },
     ):
-        print("get_or_create_user_chats_keywords_products")
         user, _ = User.objects.get_or_create(
             username=username,
             email=f"{username}@pingcycle.org",
