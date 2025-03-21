@@ -1,24 +1,20 @@
-import os
-from datetime import datetime, date, timedelta
-from logging import Logger
-import random
+from datetime import datetime
 import asyncio
-from typing import List, Tuple
-
-from django.db import transaction
+from typing import Tuple
+from asgiref.sync import sync_to_async
 
 import sentry_sdk
 from playwright.async_api import async_playwright, Page, Playwright, Browser
 
 import pingcycle.apps.core.models as core_models
 
-# TODO: Temporary solution////
+# TODO: Temporary solution
 TOWN_NAME_URL_EXT = [
     ("Dublin", "DublinIE"),
-    # ("County Kildare", "KildareIE"),
-    # ("County Wicklow", "CountyWicklow"),
-    # ("County Wexford", "WexfordIRE"),
-    # ("Waterford", "WaterfordIE"),
+    ("County Kildare", "KildareIE"),
+    ("County Wicklow", "CountyWicklow"),
+    ("County Wexford", "WexfordIRE"),
+    ("Waterford", "WaterfordIE"),
 ]
 
 
@@ -31,17 +27,19 @@ class Scraper:
 
             for town_name, town_url_ext in TOWN_NAME_URL_EXT:
                 await self._create_products_from_town(page, town_name, town_url_ext)
+                print(f"Finished cheking town: {town_name}")
+                asyncio.sleep(2)
 
             # Close the browser
             await browser.close()
-            # True is returned when all markets have been scraped
-            return True
 
     async def _create_products_from_town(
         self, page: Page, town_name: str, town_url_ext: str
     ):
         """
         # TODO: ADD SENTRY AND HEALTH CHEKING!
+
+        # TODO: REFACTOR!!!
 
         Checks if there are any new products that match users keywords
         """
@@ -59,32 +57,33 @@ class Scraper:
         products = await parent_div.query_selector_all("div[data-id]")
 
         for product in products:
+            # Is product on offer?
             is_offered = await product.query_selector(".text-offer")
             if not is_offered:
                 continue
 
+            # Is it a recent product?
             time_ago_span = await product.query_selector(
                 "span.post-list-item-date.text-lighten-less"
             )
             time_ago = await time_ago_span.inner_text()
-            print("time_ago: ", time_ago)
             # TODO: Enable back!
             # No Recent Entries
             # if not "minutes" in time_ago:
             #     break
 
-            product_id = await product.get_attribute("data-id")
-            print(f"product_id: {product_id}")
-
+            # Do we have this product in db?
             try:
-                core_models.NotifiedProduct.objects.get(external_id=product_id)
+                product_id = await product.get_attribute("data-id")
+                await sync_to_async(core_models.NotifiedProduct.objects.get)(
+                    external_id=product_id
+                )
                 continue
             except core_models.NotifiedProduct.DoesNotExist:
                 print("No matching product on records")
                 pass
 
-            # post-list-item-content-description hide-for-small-only
-            # print("Checking if product name matches Keywords")
+            # Get product name and description
             name_description_parent_div = await product.query_selector(
                 ".post-list-item-content-description.hide-for-small-only"
             )
@@ -96,23 +95,21 @@ class Scraper:
             if link_element is None:
                 # TODO: SENTRY
                 return
-            # Get the title from the <a> element's text
+
             product_name = await link_element.inner_text()
-            print(f"product_name: {product_name}")
-            # Get the URL extension from the <a> element's href attribute
-            url_extension = await link_element.get_attribute("href")
-            print(f"url_extension: {url_extension}")
-            # Extract the <p> element to get the description
-            description_element = await parent_div.query_selector("p")
+
+            description_element = await name_description_parent_div.query_selector("p")
             description = await (
                 description_element.inner_text() if description_element else ""
             )
-            print(f"description: {description}")
 
-            product_img_div = await parent_div.query_selector("img[data-src]")
-            product_img_url = await product_img_div.get_attribute("data-src")
-            print("product_img_url: ", product_img_url)
+            # Get product image
+            product_img_url = None
+            product_img_div = await product.query_selector("img[data-src]")
+            if product_img_div:
+                product_img_url = await product_img_div.get_attribute("data-src")
 
+            # Get product sublocation
             sublocation_div = await product.query_selector(
                 ".post-list-item-header-icon.location-icon"
             )
@@ -120,13 +117,17 @@ class Scraper:
             sublocation = (
                 await sublocation_span.inner_text() if sublocation_span else ""
             )
-            print(f"sublocation: {sublocation}\n\n\n")
 
+            # Look for matching keywords
             matched_keywords = core_models.Keyword.objects.filter(
                 name__trigram_similar=product_name
             )
-            if matched_keywords:
-                notified_product = core_models.NotifiedProduct.objects.create(
+            keyword_exsits = await matched_keywords.afirst()
+
+            if keyword_exsits:
+                notified_product = await sync_to_async(
+                    core_models.NotifiedProduct.objects.create
+                )(
                     product_name=product_name,
                     external_id=product_id,
                     description=description,
@@ -134,8 +135,7 @@ class Scraper:
                     sublocation=sublocation,
                     img=product_img_url,
                 )
-                notified_product.keywords.set(matched_keywords)
-                notified_product.save(update_fields=["keywords"])
+                await sync_to_async(notified_product.keywords.set)(matched_keywords)
 
     def _get_town_url(self, town_ext: str) -> str:
         # https://www.freecycle.org/town/CountyWicklow
@@ -173,9 +173,3 @@ class Scraper:
         else:
             # TODO: Unusual SENTRY
             print("Element not found.")
-
-
-if __name__ == "__main__":
-    print("Starting main...")
-    scraper = Scraper()
-    asyncio.run(scraper.run_main())
