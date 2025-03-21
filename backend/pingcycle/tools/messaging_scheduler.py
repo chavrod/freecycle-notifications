@@ -177,13 +177,6 @@ class MessageScheduler:
             # print(f"Failed to send {product} to {chat}: {e}")
             return False
 
-    # TODO: TESTS
-    # 1. Marking NotifiedProduct as Messages Created
-    # (What if you have products that have no active chats ???)
-    # 2. Test for creating objects below (more of an integration test)
-    # 3. Testing retry
-    # -> add fail message + status e.g. 429
-
     def _set_message_queue(
         self,
     ) -> List[core_models.Message]:
@@ -214,7 +207,7 @@ class MessageScheduler:
             for product in products:
                 chats_keywords = {}
 
-                # TODO: REFACTOR!!!! with tests first tho...
+                # TODO: REFACTOR!!!!
                 matched_keywords = product.keywords.all()
                 for matched_keyword in matched_keywords:
                     # Facilitates users having multiple chats
