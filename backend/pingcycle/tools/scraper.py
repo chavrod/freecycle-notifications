@@ -67,10 +67,8 @@ class Scraper:
                 "span.post-list-item-date.text-lighten-less"
             )
             time_ago = await time_ago_span.inner_text()
-            # TODO: Enable back!
-            # No Recent Entries
-            # if not "minutes" in time_ago:
-            #     break
+            if not "minutes" in time_ago:
+                break
 
             # Do we have this product in db?
             try:
