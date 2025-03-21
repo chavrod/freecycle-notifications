@@ -1,8 +1,10 @@
 import os
-import time
 from datetime import timedelta
+from asgiref.sync import async_to_sync
 
-from celery import Celery, shared_task
+from celery import Celery
+
+from config.settings import TASKS_INTERVAL_MINUTES
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -22,15 +24,36 @@ app.autodiscover_tasks()
 @app.on_after_configure.connect
 def setup_periodic_tasks(sender: Celery, **kwargs):
     sender.add_periodic_task(
-        timedelta(minutes=5), check_for_products.s(), name="Check for New Products"
+        timedelta(minutes=TASKS_INTERVAL_MINUTES),
+        look_for_new_products_task.s(),
+        name="Look for new products",
+    )
+
+    sender.add_periodic_task(
+        timedelta(minutes=TASKS_INTERVAL_MINUTES),
+        send_messages_task.s(),
+        name="Send messages",
     )
 
 
-# TODO: SEPARATE SCRAPING AND SENDING INTO SEPARATE TASKS
+async def look_for_new_products():
+    from pingcycle.tools.scraper import Scraper
+
+    scraper = Scraper()
+    await scraper.run_main()
 
 
 @app.task
-def check_for_products():
-    print("started task. Sleeeping 10")
-    time.sleep(10)
-    print("Hello")
+def look_for_new_products_task():
+    async_to_sync(look_for_new_products)()
+
+
+@app.task
+def send_messages_task():
+    from pingcycle.tools.messaging_scheduler import MessageScheduler
+    from pingcycle.tools.messaging_providers import get_messaging_provider
+    import pingcycle.apps.core.models as core_models
+
+    telegram_provider = get_messaging_provider(core_models.Chat.Provider.TELEGRAM)
+    scheduler = MessageScheduler(provider=telegram_provider)
+    scheduler.send_notified_products_in_queue()
