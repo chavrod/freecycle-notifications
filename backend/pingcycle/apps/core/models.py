@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import timedelta
 from typing import Optional
@@ -6,8 +7,10 @@ from django.utils import timezone
 from django.db import models, IntegrityError
 from django.conf import settings
 from django.db.models import Q, QuerySet
+from django.db.models.functions import Greatest
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.contrib.postgres.search import TrigramStrictWordSimilarity
 
 from rest_framework.exceptions import ValidationError
 
@@ -23,12 +26,19 @@ class KeywordManager(models.Manager):
     def create(self, name, user):
         custom_errors = []
 
+        # Regex to check for any non-alphabetical characters
+        non_alpha_re = re.compile("[^a-zA-Z]")
+
         words = name.split()
         # Word length
         for word in words:
             if len(word) < 3:
                 custom_errors.append("Each word must be at least 3 letters long")
-                break
+            if non_alpha_re.search(word):
+                custom_errors.append(
+                    "Keywords may only contain alphabetic characters (no numbers or special characters)."
+                )
+
         # Word count per name
         if len(words) > 3:
             custom_errors.append("3 words max")
@@ -71,8 +81,75 @@ class Keyword(models.Model):
         return f"{self.name}"
 
 
+class NotifiedProductManager(models.Manager):
+    def find_keyword_matches(self):
+        products_qs = NotifiedProduct.objects.filter(
+            state=NotifiedProduct.State.CREATED
+        )
+        if not products_qs:
+            print("No new products...")
+            return
+        # Set to track product IDs that have matched keywords
+        matching_product_ids = set()
+        # For each keyword linked to an active chat, check if there are any matches
+        for keyword in Keyword.objects.filter(
+            user__chats__state=Chat.State.ACTIVE
+        ).distinct():
+
+            # Annotate the products with their similarity scores for the current keyword
+            matched_products = (
+                products_qs.annotate(
+                    similarity=Greatest(
+                        TrigramStrictWordSimilarity(keyword.name, "product_name"),
+                        TrigramStrictWordSimilarity(keyword.name, "description"),
+                    )
+                )
+                .filter(similarity__gt=0.3)
+                .order_by("-similarity")
+            )
+
+            print(
+                f"{matched_products.count()} products found for keyword {keyword}: {matched_products}"
+            )
+
+            # Track matches
+            for product in matched_products:
+                # Add the keyword to the product
+                product.keywords.add(keyword)
+                # Track this product ID as having a keyword match
+                matching_product_ids.add(product.id)
+
+        # Update products that did not match any keywords
+        products_qs.exclude(id__in=matching_product_ids).update(
+            state=NotifiedProduct.State.IRRELEVANT
+        )
+
+        # Update products that have matched keywords
+        products_qs.filter(id__in=matching_product_ids).update(
+            state=NotifiedProduct.State.KEYWORDS_LINKED
+        )
+
+    def delete_irrelevant(self):
+        irrelevant_products_one_day_old = NotifiedProduct.objects.filter(
+            created__lte=timezone.now() - timedelta(days=1),
+            state=NotifiedProduct.State.IRRELEVANT,
+        )
+        print(f"Deleting {irrelevant_products_one_day_old.count()} IRRELEVANT products")
+        irrelevant_products_one_day_old.delete()
+
+
 class NotifiedProduct(models.Model):
-    messages_scheduled = models.BooleanField(default=False)
+    objects = NotifiedProductManager()
+
+    class State(models.TextChoices):
+        CREATED = "CREATED"
+        KEYWORDS_LINKED = "KEYWORDS_LINKED"
+        MESSAGES_CREATED = "MESSAGES_CREATED"
+        IRRELEVANT = "IRRELEVANT"
+
+    state = models.CharField(
+        max_length=30, choices=State.choices, default=State.CREATED
+    )
     product_name = models.CharField(max_length=200)
     external_id = models.IntegerField()
     description = models.TextField(null=True)

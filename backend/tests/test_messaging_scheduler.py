@@ -215,7 +215,7 @@ def test_total_chat_limit_enforce(
                             {
                                 "product_name": "orange cake",
                                 "external_id": 2,
-                                "messages_scheduled": True,
+                                "state": core_models.NotifiedProduct.State.MESSAGES_CREATED,
                             }
                         ],
                     },
@@ -229,7 +229,7 @@ def test_total_chat_limit_enforce(
                     "status": core_models.Message.Status.SENT,
                 }
             ],
-            id="1 Chat - 1KW linked to 1P + 1KW linked to 1P (with messages_scheduled == True)",
+            id="1 Chat - 1KW linked to 1P + 1KW linked to 1P (with MESSAGES_CREATED state)",
         ),
         pytest.param(
             [
@@ -605,7 +605,7 @@ def test_messages_created(
 
     1 Chat - 1KW linked to 1P
     1 Chat - 1KW linked to 1P + 1KW not linked
-    1 Chat - 1KW linked to 1P + 1KW linked to 1P (with messages_scheduled == True)
+    1 Chat - 1KW linked to 1P + 1KW linked to 1P (with MESSAGES_CREATED state)
     1 Chat - 2KW linked to 1P
     1 Chat - 1KW linked to 2P
     1 Chat - 2KW linked to 1P + 1 same KW linked to other P
@@ -638,13 +638,19 @@ def test_messages_created(
 
     # ASSERT
 
+    print("ALL PRODUCTS COUNT: ", core_models.NotifiedProduct.objects.all().count())
+
     # Assert all product statues have been updated
+    total_products = core_models.NotifiedProduct.objects.all()
+    assert total_products.count() > 0, "Expected to have at least 1 product in db"
     notified_products_without_scheduled_msg_count = (
-        core_models.NotifiedProduct.objects.filter(messages_scheduled=False)
+        core_models.NotifiedProduct.objects.filter(
+            state=core_models.NotifiedProduct.State.MESSAGES_CREATED
+        )
     )
     assert (
-        notified_products_without_scheduled_msg_count.count() == 0
-    ), "Expected all products to have scheduled messages"
+        notified_products_without_scheduled_msg_count.count() == total_products.count()
+    ), "Expected all products to have status MESSAGES_CREATED"
 
     # Assert all messages have been sent
     sent_messages_count = core_models.Message.objects.filter(
@@ -680,9 +686,10 @@ def test_messages_created(
 
         # Check for the presence of the linked keywords in message text
         message_text = message.text
-        marker = "**Linked Keywords:**"
+        marker = "*Linked Keywords:*"
         marker_index = message_text.index(marker)
         keywords_in_text = message_text[marker_index + len(marker) :].strip()
+        keywords_in_text = keywords_in_text.split("\n", 1)[0].strip()
         keywords_list = [kw.strip() for kw in keywords_in_text.split(",")]
 
         for keyword in assert_message["linked_keywords"]:

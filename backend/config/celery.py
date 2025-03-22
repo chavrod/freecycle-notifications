@@ -25,14 +25,14 @@ app.autodiscover_tasks()
 def setup_periodic_tasks(sender: Celery, **kwargs):
     sender.add_periodic_task(
         timedelta(minutes=TASKS_INTERVAL_MINUTES),
-        look_for_new_products_task.s(),
-        name="Look for new products",
+        look_for_new_products_task_and_notify.s(),
+        name="Check for new products & notify",
     )
 
     sender.add_periodic_task(
         timedelta(minutes=TASKS_INTERVAL_MINUTES),
-        send_messages_task.s(),
-        name="Send messages",
+        delete_old_irrelevant_products.s(),
+        name="Delete old irrelevant products",
     )
 
 
@@ -44,16 +44,22 @@ async def look_for_new_products():
 
 
 @app.task
-def look_for_new_products_task():
-    async_to_sync(look_for_new_products)()
-
-
-@app.task
-def send_messages_task():
+def look_for_new_products_task_and_notify():
     from pingcycle.tools.messaging_scheduler import MessageScheduler
     from pingcycle.tools.messaging_providers import get_messaging_provider
     import pingcycle.apps.core.models as core_models
 
+    async_to_sync(look_for_new_products)()
+
+    core_models.NotifiedProduct.objects.find_keyword_matches()
+
     telegram_provider = get_messaging_provider(core_models.Chat.Provider.TELEGRAM)
     scheduler = MessageScheduler(provider=telegram_provider)
     scheduler.send_notified_products_in_queue()
+
+
+@app.task
+def delete_old_irrelevant_products():
+    import pingcycle.apps.core.models as core_models
+
+    core_models.NotifiedProduct.objects.delete_irrelevant()

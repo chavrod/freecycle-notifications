@@ -28,7 +28,7 @@ class Scraper:
             for town_name, town_url_ext in TOWN_NAME_URL_EXT:
                 await self._create_products_from_town(page, town_name, town_url_ext)
                 print(f"Finished cheking town: {town_name}")
-                asyncio.sleep(2)
+                await asyncio.sleep(2)
 
             # Close the browser
             await browser.close()
@@ -56,6 +56,8 @@ class Scraper:
         parent_div = await page.query_selector("#fc-data")
         products = await parent_div.query_selector_all("div[data-id]")
 
+        products_to_create = []
+
         for product in products:
             # Is product on offer?
             is_offered = await product.query_selector(".text-offer")
@@ -78,7 +80,6 @@ class Scraper:
                 )
                 continue
             except core_models.NotifiedProduct.DoesNotExist:
-                print("No matching product on records")
                 pass
 
             # Get product name and description
@@ -116,16 +117,9 @@ class Scraper:
                 await sublocation_span.inner_text() if sublocation_span else ""
             )
 
-            # Look for matching keywords
-            matched_keywords = core_models.Keyword.objects.filter(
-                name__trigram_similar=product_name
-            )
-            keyword_exsits = await matched_keywords.afirst()
-
-            if keyword_exsits:
-                notified_product = await sync_to_async(
-                    core_models.NotifiedProduct.objects.create
-                )(
+            print(f"Addingg new Product: {product_name}")
+            products_to_create.append(
+                core_models.NotifiedProduct(
                     product_name=product_name,
                     external_id=product_id,
                     description=description,
@@ -133,7 +127,13 @@ class Scraper:
                     sublocation=sublocation,
                     img=product_img_url,
                 )
-                await sync_to_async(notified_product.keywords.set)(matched_keywords)
+            )
+
+        if products_to_create:
+            print(f"bulk creating {len(products_to_create)} products")
+            await sync_to_async(core_models.NotifiedProduct.objects.bulk_create)(
+                products_to_create
+            )
 
     def _get_town_url(self, town_ext: str) -> str:
         # https://www.freecycle.org/town/CountyWicklow

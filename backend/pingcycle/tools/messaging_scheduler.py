@@ -185,11 +185,11 @@ class MessageScheduler:
     ):
         """
         Creates new messages in the database for any products that have
-        'messages_scheduled' = False; and then sets 'messages_scheduled' to True
+        state KEYWORDS_LINKED; and then sets state to MESSAGES_CREATED
         """
         with transaction.atomic():
             products = core_models.NotifiedProduct.objects.filter(
-                messages_scheduled=False
+                state=core_models.NotifiedProduct.State.KEYWORDS_LINKED
             ).prefetch_related("keywords__user__chats")
 
             updated_products = []
@@ -222,13 +222,13 @@ class MessageScheduler:
                         )
                         created_messages.append(message)
 
-                product.messages_scheduled = True
+                product.state = core_models.NotifiedProduct.State.MESSAGES_CREATED
                 updated_products.append(product)
 
             core_models.Message.objects.bulk_create(created_messages)
 
             core_models.NotifiedProduct.objects.bulk_update(
-                updated_products, fields=["messages_scheduled"]
+                updated_products, fields=["state"]
             )
 
     @staticmethod

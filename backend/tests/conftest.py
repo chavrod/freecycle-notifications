@@ -46,7 +46,9 @@ def get_or_create_user_chats_keywords_products():
             for product in products:
                 product, _ = core_models.NotifiedProduct.objects.get_or_create(
                     product_name=product["product_name"],
-                    messages_scheduled=product.get("messages_scheduled", False),
+                    state=product.get(
+                        "state", core_models.NotifiedProduct.State.KEYWORDS_LINKED
+                    ),
                     external_id=product["external_id"],
                     location="Test Location",
                 )
