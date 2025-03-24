@@ -20,17 +20,17 @@ import TimeAgo from "javascript-time-ago";
 import en from "javascript-time-ago/locale/en";
 import { notifications } from "@mantine/notifications";
 
-import { useUser } from "./auth/hooks";
-import useApi from "./utils/api/useApi";
-import coreApi from "./utils/api/coreApi";
-import { Keyword, Chat } from "./utils/api/api_types";
-import { ChatStateNameAndEmoji } from "./utils/enum_records";
-import AddKeywordModal from "./components/AddKeywordModal";
-import LinkChatModal from "./components/LinkChatModal";
+import { useUser } from "../auth/hooks";
+import useApi from "../utils/api/useApi";
+import coreApi from "../utils/api/coreApi";
+import { Keyword, Chat } from "../utils/api/api_types";
+import { ChatStateNameAndEmoji } from "../utils/enum_records";
+import AddKeywordModal from "./AddKeywordModal";
+import LinkChatModal from "./LinkChatModal";
 import { useEffect, useState } from "react";
-import { STANDARD_ERROR_MESSAGE } from "./utils/constants";
+import { STANDARD_ERROR_MESSAGE } from "../utils/constants";
 
-export default function DashboardPage() {
+export default function Dashboard() {
   const [
     openedKewordModal,
     { open: openKewordModal, close: closeKewordModal },

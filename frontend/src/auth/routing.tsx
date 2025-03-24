@@ -5,7 +5,7 @@ import { AuthRes, AuthFlow } from "./AuthContext";
 
 export const URLs = Object.freeze({
   LOGIN_URL: "/account/login",
-  LOGIN_REDIRECT_URL: "/dashboard",
+  LOGIN_REDIRECT_URL: "/",
   LOGOUT_REDIRECT_URL: "/",
 });
 

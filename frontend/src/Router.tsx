@@ -25,7 +25,6 @@ import Root from "./Root";
 import Home from "./Home";
 import { useConfig } from "./auth/hooks";
 import ErrorBoundary from "./components/ErrorBoundary";
-import DashboardPage from "./Dashboard";
 import ManageChats from "./settings/ManageChats";
 
 function createRouter() {
@@ -42,14 +41,6 @@ function createRouter() {
         {
           path: "/",
           element: <Home />,
-        },
-        {
-          path: "/dashboard",
-          element: (
-            <AuthenticatedRoute>
-              <DashboardPage />
-            </AuthenticatedRoute>
-          ),
         },
         {
           path: "manage-chats",

@@ -87,7 +87,7 @@ function LoginForm() {
   };
 
   return (
-    <CentredFlexPaper title="Login">
+    <CentredFlexPaper title="Login" closeButtonPath="/">
       {(isEmailVerified && !isPasswordConfirmed) ||
       (!isEmailVerified && isPasswordConfirmed) ? (
         <Notification

@@ -68,7 +68,7 @@ function Signup() {
   };
 
   return (
-    <CentredFlexPaper title="Signup">
+    <CentredFlexPaper title="Signup" closeButtonPath="/">
       {!isRegistrationSubmitted ? (
         <form onSubmit={form.onSubmit(handleFormSubmit)}>
           <TextInput
