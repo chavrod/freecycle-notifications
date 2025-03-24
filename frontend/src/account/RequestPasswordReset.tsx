@@ -4,7 +4,6 @@ import { Button, TextInput, Stack, Text } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconCircleCheckFilled } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import { Link } from "react-router-dom";
 
 import CentredFlexPaper from "../components/CenteredFlexPaper";
 import { requestPasswordReset, formatAuthErrors } from "../auth/api";
@@ -61,13 +60,12 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <CentredFlexPaper>
+    <CentredFlexPaper title="Forgot Password" closeButtonPath="/">
       {!showPasswordResetEmailConfirmation ? (
         <form onSubmit={form.onSubmit(handleFormSubmit)}>
           <TextInput
             id="login_email"
-            label="Forgot Password?"
-            description="Enter your email and we'll send you a reset link"
+            label="Email"
             placeholder="Your email address"
             // eslint-disable-next-line react/jsx-props-no-spreading
             {...form.getInputProps("email")}
@@ -92,11 +90,6 @@ export default function ForgotPasswordPage() {
           </Text>
         </Stack>
       )}
-      <Link to="/account/login" style={{ textDecoration: "none" }}>
-        <Button variant="outline" fullWidth mt="xs">
-          Go to Login
-        </Button>
-      </Link>
     </CentredFlexPaper>
   );
 }
