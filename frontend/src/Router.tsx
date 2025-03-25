@@ -84,7 +84,7 @@ function createRouter() {
           ),
         },
         {
-          path: "/account/password/key/:key",
+          path: "/account/password/reset/key/:key",
           element: (
             <AnonymousRoute>
               <ResetPassword />

@@ -221,20 +221,15 @@ AUTHENTICATION_BACKENDS = (
     "allauth.account.auth_backends.AuthenticationBackend",
 )
 ACCOUNT_ADAPTER = "pingcycle.apps.users.adapters.CustomAccountAdapter"
-if ENV == "DEV":
-    HEADLESS_FRONTEND_URLS = {
-        "account_confirm_email": "http://127.0.0.1:3000/account/verify-email/{key}",
-        "account_reset_password": "http://127.0.0.1:3000/account/password/reset",
-        "account_reset_password_from_key": "http://127.0.0.1:3000/account/password/key/{key}",
-        "account_signup": "/account/signup",
-    }
-else:
-    HEADLESS_FRONTEND_URLS = {
-        "account_confirm_email": "account/verify-email/{key}",
-        "account_reset_password": "account/password/reset",
-        "account_reset_password_from_key": "/account/password/reset/key/{key}",
-        "account_signup": "/account/signup",
-    }
+HEADLESS_ADAPTER = "pingcycle.apps.users.adapters.CustomHeadlessAdapter"
+
+HEADLESS_FRONTEND_URLS = {
+    "account_confirm_email": "account/verify-email/{key}",
+    # Sent in an email when someone tries to signup with your email
+    "account_reset_password": "account/password/reset",
+    "account_reset_password_from_key": "account/password/reset/key/{key}",
+    "account_signup": "account/signup",
+}
 # Use email for authentication instead of usernames.
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False

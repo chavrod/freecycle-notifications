@@ -1,15 +1,27 @@
 import json
 
 from django.core.exceptions import ValidationError
-from django.http import JsonResponse
+from django.core.exceptions import ImproperlyConfigured
 
 from allauth.headless.internal.restkit.response import APIResponse
+from allauth.headless.adapter import DefaultHeadlessAdapter
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.core.internal.httpkit import render_url
 from allauth.core.exceptions import (
     ImmediateHttpResponse,
 )
 
-from config.settings import TEMP_ALLOWED_EMAILS
+from config.settings import TEMP_ALLOWED_EMAILS, BASE_ORIGIN, HEADLESS_FRONTEND_URLS
+
+
+class CustomHeadlessAdapter(DefaultHeadlessAdapter):
+    def get_frontend_url(self, urlname, **kwargs):
+        """Return the frontend URL for the given URL name."""
+        url_ext = HEADLESS_FRONTEND_URLS.get(urlname)
+        if not url_ext:
+            raise ImproperlyConfigured(f"HEADLESS_FRONTEND_URLS['{url_ext}']")
+        if url_ext:
+            return render_url(self.request, f"{BASE_ORIGIN}/{url_ext}", **kwargs)
 
 
 class CustomAccountAdapter(DefaultAccountAdapter):
@@ -52,7 +64,6 @@ class CustomAccountAdapter(DefaultAccountAdapter):
 
         return super().clean_password(password, user)
 
-    # TODO: TEMP
     # def is_open_for_signup(self, request):
     #     body_unicode = request.body.decode("utf-8")
     #     body_data = json.loads(body_unicode)
