@@ -85,9 +85,6 @@ export const AuthContextProvider: FC<AuthContextProviderProps> = ({
 
   const loading = typeof auth === "undefined" || config?.status !== 200;
 
-  console.log("AUTH: ", auth);
-  console.log("CONFIG: ", config);
-
   return (
     <AuthContext.Provider value={{ auth, config }}>
       {loading ? (

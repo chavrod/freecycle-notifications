@@ -44,8 +44,6 @@ function Signup() {
 
       const res = await signUp({ email, password: password1 });
 
-      console.log("SIGNUP RES: ", res);
-
       if (res.status === 400) {
         form.setErrors(formatAuthErrors(res.errors, { password: "password1" }));
         // 401 indicates that email verificaiton is required
