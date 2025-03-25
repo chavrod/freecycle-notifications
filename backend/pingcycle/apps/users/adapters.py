@@ -64,18 +64,24 @@ class CustomAccountAdapter(DefaultAccountAdapter):
 
         return super().clean_password(password, user)
 
-    # def is_open_for_signup(self, request):
-    #     body_unicode = request.body.decode("utf-8")
-    #     body_data = json.loads(body_unicode)
-    #     email = body_data.get("email")
+    # TODO: TEMP
+    def is_open_for_signup(self, request):
+        if request.path.endswith("auth/signup"):
+            body_unicode = request.body.decode("utf-8")
+            body_data = json.loads(body_unicode)
+            email = body_data.get("email")
 
-    #     if email not in TEMP_ALLOWED_EMAILS:
-    #         raise ImmediateHttpResponse(
-    #             APIResponse(
-    #                 request,
-    #                 errors=[{"message": "We are not open for Signup at the moment."}],
-    #                 status=403,
-    #             )
-    #         )
-    #     else:
-    #         return True
+            if email not in TEMP_ALLOWED_EMAILS:
+                raise ImmediateHttpResponse(
+                    APIResponse(
+                        request,
+                        errors=[
+                            {"message": "We are not open for Signup at the moment."}
+                        ],
+                        status=403,
+                    )
+                )
+            else:
+                return True
+
+        return False
