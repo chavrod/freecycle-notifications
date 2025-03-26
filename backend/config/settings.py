@@ -215,7 +215,6 @@ else:
 
 # Auth
 AUTH_USER_MODEL = "users.CustomUser"
-HEADLESS_ONLY = True
 AUTHENTICATION_BACKENDS = (
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
@@ -223,6 +222,7 @@ AUTHENTICATION_BACKENDS = (
 ACCOUNT_ADAPTER = "pingcycle.apps.users.adapters.CustomAccountAdapter"
 HEADLESS_ADAPTER = "pingcycle.apps.users.adapters.CustomHeadlessAdapter"
 
+HEADLESS_ONLY = True
 HEADLESS_FRONTEND_URLS = {
     "account_confirm_email": "account/verify-email/{key}",
     # Sent in an email when someone tries to signup with your email
@@ -237,6 +237,7 @@ ACCOUNT_LOGIN_METHODS = {"email"}
 
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "\u200b"
 TEMP_ALLOWED_EMAILS = CONFIG["TEMP_ALLOWED_EMAILS"]
 
