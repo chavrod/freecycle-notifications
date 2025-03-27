@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import json
 from pathlib import Path
 
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
 SITE_ID = 1
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -260,3 +263,12 @@ if not isinstance(MAX_KEYWORDS_PER_USER, int):
     )
 CHAT_TEMP_UUID_MAX_VALID_SECONDS = 20
 MAX_RETRIES_PER_MESSAGE = 3
+
+
+if ENV != "DEV":
+    sentry_sdk.init(
+        dsn=CONFIG["SENTRY_DSN"],
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=0.01,
+        send_default_pii=True,
+    )
