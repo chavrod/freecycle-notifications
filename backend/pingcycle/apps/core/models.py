@@ -13,6 +13,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.postgres.search import TrigramStrictWordSimilarity
 
 from rest_framework.exceptions import ValidationError
+import sentry_sdk
 
 from config.settings import (
     MAX_KEYWORDS_PER_USER,
@@ -199,9 +200,7 @@ class Chat(models.Model):
 
     name = models.CharField(max_length=200, null=True, blank=False)
     number = models.CharField(max_length=200, null=True, blank=False)  # or username
-    reference = models.CharField(
-        max_length=200, null=True, blank=False
-    )  # TODO: must be unique per provider
+    reference = models.CharField(max_length=200, null=True, blank=False)
     provider = models.CharField(max_length=20, choices=Provider.choices)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -277,7 +276,12 @@ class ChatLinkingSession(models.Model):
         while new_session is None:
             try:
                 if attempts > 4:  # Extremely unlikely to happen
-                    # TODO: SENTRY!
+                    with sentry_sdk.new_scope() as scope:
+                        scope.set_tag("attempts", attempts)
+                        scope.user = {"id": user.id, "email": user.email}
+                        sentry_sdk.capture_message(
+                            "Failed Getting Session UUID", "warning"
+                        )
                     raise ValidationError(
                         {"detail": "Something went wrong. Please try again."}
                     )
