@@ -11,10 +11,12 @@ from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError, NotFound
+import sentry_sdk
 
 from .models import Keyword, Chat, ChatLinkingSession
 from .serializers import KeywordsSerializer, KeywordsCreationSerializer, ChatsSerializer
 from pingcycle.tools import messaging_providers
+from config.settings import ENV
 
 
 @csrf_protect
@@ -136,7 +138,9 @@ def messaging_provider_webhook(request, provider_key=None):
         provider.handle_webhook(request)
     except Exception as e:
         print("MESSAGING WEBHOOK ERROR:", e)
-        # TODO: SENTRY
-        # capture_exception(e)
+        if ENV != "DEV":
+            with sentry_sdk.new_scope() as scope:
+                scope.set_tag("error_type", "messaging_webhook")
+                sentry_sdk.capture_exception(e)
 
     return Response(status=status.HTTP_200_OK)
