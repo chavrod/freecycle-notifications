@@ -20,6 +20,7 @@ from config.settings import (
     CHAT_TEMP_UUID_MAX_VALID_SECONDS,
     MAX_CHATS_PER_USER,
     MAX_RETRIES_PER_MESSAGE,
+    ENV,
 )
 
 
@@ -276,12 +277,13 @@ class ChatLinkingSession(models.Model):
         while new_session is None:
             try:
                 if attempts > 4:  # Extremely unlikely to happen
-                    with sentry_sdk.new_scope() as scope:
-                        scope.set_tag("attempts", attempts)
-                        scope.user = {"id": user.id, "email": user.email}
-                        sentry_sdk.capture_message(
-                            "Failed Getting Session UUID", "warning"
-                        )
+                    if ENV != "DEV":
+                        with sentry_sdk.new_scope() as scope:
+                            scope.set_tag("attempts", attempts)
+                            scope.user = {"id": user.id, "email": user.email}
+                            sentry_sdk.capture_message(
+                                "Failed Getting Session UUID", "warning"
+                            )
                     raise ValidationError(
                         {"detail": "Something went wrong. Please try again."}
                     )
