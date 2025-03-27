@@ -1,12 +1,13 @@
 from datetime import datetime
 import asyncio
-from typing import Tuple
+from typing import Tuple, Dict, Optional, Literal, Any
 from asgiref.sync import sync_to_async
 
 import sentry_sdk
 from playwright.async_api import async_playwright, Page, Playwright, Browser
 
 import pingcycle.apps.core.models as core_models
+from config.settings import ENV
 
 # TODO: Temporary solution
 TOWN_NAME_URL_EXT = [
@@ -20,26 +21,29 @@ TOWN_NAME_URL_EXT = [
 
 class Scraper:
     async def run_main(self):
+        print("Started Running Scraper")
         self.start_time = datetime.now()
 
         async with async_playwright() as p:
             browser, page = await self._open_blank_browser_page(p)
 
             for town_name, town_url_ext in TOWN_NAME_URL_EXT:
-                await self._create_products_from_town(page, town_name, town_url_ext)
-                print(f"Finished cheking town: {town_name}")
-                await asyncio.sleep(2)
+                try:
+                    await self._create_products_from_town(page, town_name, town_url_ext)
+                    print(f"Finished cheking town: {town_name}")
+                    await asyncio.sleep(2)
+                except Exception as e:
+                    await self.send_capture_exception(e)
 
             # Close the browser
+            print("Finished Running Scraper")
             await browser.close()
 
     async def _create_products_from_town(
         self, page: Page, town_name: str, town_url_ext: str
     ):
         """
-        # TODO: ADD SENTRY AND HEALTH CHEKING!
-
-        # TODO: REFACTOR!!!
+        # TODO: TESTS + REFACTOR
 
         Checks if there are any new products that match users keywords
         """
@@ -58,7 +62,7 @@ class Scraper:
 
         products_to_create = []
 
-        for product in products:
+        for index, product in enumerate(products):
             # Is product on offer?
             is_offered = await product.query_selector(".text-offer")
             if not is_offered:
@@ -71,6 +75,20 @@ class Scraper:
             time_ago = await time_ago_span.inner_text()
             if not "minutes" in time_ago:
                 break
+
+            # If the last element is on offer and is recent, send Sentry alert
+            # TODO: Should just 'load more' automatically
+            if index == len(products) - 1:
+                await self.send_sentry_message(
+                    message="Last element is recent and on offer",
+                    level="warning",
+                    data={
+                        "town_name": town_name,
+                        "is_offered": "True" if is_offered else "False",
+                        "time_ago": time_ago,
+                        "array_index": index,
+                    },
+                )
 
             # Do we have this product in db?
             try:
@@ -86,14 +104,7 @@ class Scraper:
             name_description_parent_div = await product.query_selector(
                 ".post-list-item-content-description.hide-for-small-only"
             )
-            if name_description_parent_div is None:
-                # TODO: SENTRY
-                return
-
             link_element = await name_description_parent_div.query_selector("h4 > a")
-            if link_element is None:
-                # TODO: SENTRY
-                return
 
             product_name = await link_element.inner_text()
 
@@ -169,5 +180,38 @@ class Scraper:
 
             print("List view is active.")
         else:
-            # TODO: Unusual SENTRY
-            print("Element not found.")
+            await self.send_sentry_message(
+                "Unable to find List View selector", "warning"
+            )
+
+    @sync_to_async
+    def send_sentry_message(
+        self,
+        message: str,
+        level: Literal["fatal", "critical", "error", "warning", "info", "debug"],
+        data: Optional[Dict[str, Any]] = None,
+    ):
+        print(f"Sending Sentry message with level '{level}': {message}")
+        if ENV == "DEV":
+            print("Abort sending in DEV")
+            return
+
+        with sentry_sdk.new_scope() as scope:
+            scope.set_tag("module", "scraper")
+            if data:
+                scope.set_context("town_product_details", data)
+            sentry_sdk.capture_message(message, level)
+
+    @sync_to_async
+    def send_capture_exception(
+        self,
+        e,
+    ):
+        print(f"Capturing Sentry exception: {e}")
+        if ENV == "DEV":
+            print("Abort sending in DEV")
+            return
+
+        with sentry_sdk.new_scope() as scope:
+            scope.set_tag("module", "scraper")
+            sentry_sdk.capture_exception(e)
