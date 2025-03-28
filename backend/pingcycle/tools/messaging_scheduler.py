@@ -158,7 +158,6 @@ class MessageScheduler:
         try:
             return self.chat_provider.send_message(message)
         except Exception as e:
-            # TODO: SENTRY - should not happen
             # TODO: Should formatting be standardised into error object???
             return {
                 "is_ok": False,

@@ -6,16 +6,15 @@ import time
 
 from django.utils import timezone
 from django.db import transaction
+
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
+import sentry_sdk
+
 import pingcycle.apps.core.models as core_models
-from config.settings import (
-    BASE_ORIGIN,
-    WH_BASE_DOMAIN,
-    CONFIG,
-)
+from config.settings import BASE_ORIGIN, WH_BASE_DOMAIN, CONFIG, ENV
 
 
 class UserFriendlyChatError(Exception):
@@ -202,6 +201,28 @@ class Telegram(MessagingProvider):
         if status_code == 200:
             return {"is_ok": True, "time_sent": time.time(), "msg": res.json()}
         else:
+            if ENV != "DEV":
+                with sentry_sdk.new_scope() as scope:
+                    scope.set_tag("module", "messaging_providers")
+                    scope.set_tag("api", "telegram")
+                    scope.set_tag("method", method_name)
+                    scope.set_tag("status_code", status_code)
+                    scope.set_context(
+                        "telegram_request",
+                        {
+                            "method_name": method_name,
+                            "chat_id": params.get("chat_id"),
+                            "text": params.get("text"),
+                        },
+                    )
+                    scope.set_context(
+                        "telegram_response",
+                        {"status_code": status_code, "error_message": res.text},
+                    )
+
+                    sentry_sdk.capture_message(
+                        "Non-OK Response from Telegram", "warning"
+                    )
             return {
                 "is_ok": False,
                 "error_obj": {
@@ -223,17 +244,12 @@ class Telegram(MessagingProvider):
 
                 self._receive_message(data)
             except UserFriendlyChatError as e:
-                # TODO: We should check if res not ok?
-                res = self._post_api(
+                self._post_api(
                     "sendMessage",
                     chat_id=e.chat_reference,
                     text=e.message,
                     parse_mode="Markdown",
                 )
-            except Exception as e:
-                print("ERROR TELEGRAM handle_webhook(): ", e)
-                # TODO: SENTRY
-                # capture_exception(e)
         else:
             print("UNHANDLED EVENT TELEGRAM TYPE:", request.data)
 
