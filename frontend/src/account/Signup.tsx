@@ -3,6 +3,7 @@ import { TextInput, Button, Center, Stack, Text, Title } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { IconCircleCheckFilled } from "@tabler/icons-react";
+import * as Sentry from "@sentry/react";
 
 import { STANDARD_ERROR_MESSAGE } from "../utils/constants";
 import { signUp, formatAuthErrors } from "../auth/api";
@@ -52,11 +53,21 @@ function Signup() {
       } else if (res.status == 401) {
         setIsRegistrationSubmitted(true);
       } else {
-        // TODO: REPORT UNKNOW ERROR TO SENTRY
+        Sentry.withScope((scope) => {
+          scope.setTag("auth_stage", "signup");
+          scope.setContext("error_res", res);
+          Sentry.captureMessage(
+            `Unexpected authentication response at Signup: ${res.status}`,
+            "warning"
+          );
+        });
         setError(STANDARD_ERROR_MESSAGE);
       }
     } catch (error: any) {
-      // TODO: REPORT UNKNOW ERROR TO SENTRY
+      Sentry.withScope((scope) => {
+        scope.setTag("auth_stage", "login");
+        Sentry.captureException(error);
+      });
       setError(STANDARD_ERROR_MESSAGE);
     } finally {
       setIsLoading(false);

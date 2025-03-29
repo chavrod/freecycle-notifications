@@ -12,6 +12,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { Link, useLocation } from "react-router-dom";
 import { IconCheck } from "@tabler/icons-react";
+import * as Sentry from "@sentry/react";
 
 import { STANDARD_ERROR_MESSAGE } from "../utils/constants";
 import { login, formatAuthErrors } from "../auth/api";
@@ -56,7 +57,6 @@ function LoginForm() {
 
       const res = await login({ email, password });
       const resCode: number | undefined = res?.status;
-      console.log("LOGIN RES: ", res);
 
       if (resCode === 400) {
         form.setErrors(formatAuthErrors(res.errors));
@@ -65,17 +65,39 @@ function LoginForm() {
           (flow: AuthFlow) =>
             flow.id === "verify_email" && flow.is_pending === true
         );
-        // TODO: REPORT TO SENTRY
+        // Report to Sentry if it's not an unverified email issue
+        if (!verifyEmailPending) {
+          Sentry.withScope((scope) => {
+            scope.setTag("auth_stage", "login");
+            scope.setContext("error_res", res);
+            Sentry.captureMessage(
+              "Unexpected 401 reason at Login - not email verification related",
+              "warning"
+            );
+          });
+        }
         setError(
           verifyEmailPending
             ? "You must verify your email first"
             : STANDARD_ERROR_MESSAGE
         );
       } else {
-        // TODO: REPORT TO SENTRY
+        // Report to Sentry for any other status code
+        Sentry.withScope((scope) => {
+          scope.setTag("auth_stage", "login");
+          scope.setContext("error_res", res);
+          Sentry.captureMessage(
+            `Unexpected authentication response at Login: ${resCode}`,
+            "warning"
+          );
+        });
         setError(STANDARD_ERROR_MESSAGE);
       }
     } catch (err: any) {
+      Sentry.withScope((scope) => {
+        scope.setTag("auth_stage", "login");
+        Sentry.captureException(err);
+      });
       notifications.show({
         title: "Server Error!",
         message: err?.message || "Unknown error. Please try again later.",

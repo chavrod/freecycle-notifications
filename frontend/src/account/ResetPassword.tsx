@@ -5,6 +5,7 @@ import { Button, Text } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useDisclosure } from "@mantine/hooks";
+import * as Sentry from "@sentry/react";
 
 import { STANDARD_ERROR_MESSAGE } from "../utils/constants";
 import PasswordStrengthInput from "../auth/PasswordStrengthInput";
@@ -53,7 +54,14 @@ export default function ResetPassword() {
       if (res.status === 400) {
         form.setErrors(formatAuthErrors(res.errors, { password: "password1" }));
       } else if (res.status !== 401) {
-        // TODO: REPORT TO SENTRY
+        Sentry.withScope((scope) => {
+          scope.setTag("auth_stage", "reset_password");
+          scope.setContext("error_res", res);
+          Sentry.captureMessage(
+            `Unexpected authentication response at ResetPassword: ${res.status}`,
+            "warning"
+          );
+        });
         notifications.show({
           title: "Server Error!",
           message: STANDARD_ERROR_MESSAGE,
@@ -61,10 +69,13 @@ export default function ResetPassword() {
         });
       }
     } catch (error) {
-      // TODO: REPORT UNKNOW ERROR TO SENTRY
+      Sentry.withScope((scope) => {
+        scope.setTag("auth_stage", "reset_password");
+        Sentry.captureException(error);
+      });
       notifications.show({
         title: "Server Error!",
-        message: "Unexpected error. Please try again later.",
+        message: STANDARD_ERROR_MESSAGE,
         color: "red",
       });
     } finally {
