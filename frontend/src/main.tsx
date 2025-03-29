@@ -10,6 +10,7 @@ Sentry.init({
     import.meta.env.VITE_ENV !== "DEV"
       ? import.meta.env.VITE_SENTRY_DSN
       : undefined,
+  normalizeDepth: 5,
 });
 
 createRoot(document.getElementById("root")!).render(
