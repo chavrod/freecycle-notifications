@@ -51,8 +51,8 @@ function determineAuthChangeEvent(
 ): keyof typeof AuthChangeEvent | null {
   let fromInfo = authInfo(fromAuth);
   const toInfo = authInfo(toAuth);
-  console.log("determineAuthChangeEvent fromInfo: ", fromInfo);
-  console.log("determineAuthChangeEvent toInfo: ", toInfo);
+  // console.log("determineAuthChangeEvent fromInfo: ", fromInfo);
+  // console.log("determineAuthChangeEvent toInfo: ", toInfo);
   if (toAuth?.status === 410) {
     return AuthChangeEvent.LOGGED_OUT;
   }

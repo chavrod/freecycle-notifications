@@ -61,7 +61,7 @@ export default function LinkChatModal({
         await coreApi.chatsGetBySessionUuid(sessionUuid);
         setLinkingSessionState("complete");
       } catch (e) {
-        console.log("Waiting for chat to link...");
+        // console.log("Waiting for chat to link...");
       }
     };
 

@@ -41,18 +41,18 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthContextProvider: FC<AuthContextProviderProps> = ({
   children,
 }) => {
-  console.log("AuthContextProvider render");
+  // console.log("AuthContextProvider render");
   const [auth, setAuth] = useState<AuthRes | null | undefined>(undefined);
   const [config, setConfig] = useState<any | null>(null);
 
   useEffect(() => {
-    console.log("UseEffect triggered");
+    // console.log("UseEffect triggered");
     function onAuthChanged(e: CustomEvent) {
       setAuth((auth: AuthRes | null | undefined) => {
         if (typeof auth === "undefined") {
-          console.log("Authentication status loaded");
+          // console.log("Authentication status loaded");
         } else {
-          console.log("Authentication status updated");
+          // console.log("Authentication status updated");
         }
         return e.detail;
       });
@@ -62,14 +62,14 @@ export const AuthContextProvider: FC<AuthContextProviderProps> = ({
       "allauth.auth.change",
       onAuthChanged as EventListener
     );
-    console.log("Getting getAuth...");
+    // console.log("Getting getAuth...");
     getAuth()
       .then((data) => setAuth(data))
       .catch((e) => {
         console.error(e);
         setAuth(null);
       });
-    console.log("Getting getConfig...");
+    // console.log("Getting getConfig...");
     getConfig()
       .then((data) => setConfig(data))
       .catch((e) => {
