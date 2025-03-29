@@ -48,7 +48,6 @@ const createApiClient = (appPath?: string): ApiClient => {
       try {
         errorData = await response.json();
       } catch {
-        // TODO: REPORT TO SENTRY
         errorData = STANDARD_ERROR_MESSAGE;
       }
       throw {

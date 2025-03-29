@@ -74,7 +74,6 @@ export function AuthChangeRedirector({
     case AuthChangeEvent.LOGGED_IN:
       return <Navigate to={URLs.LOGIN_REDIRECT_URL} />;
     case AuthChangeEvent.REAUTHENTICATION_REQUIRED: {
-      // TODO: REPORT TO SENTRY
       // Use the custom type guard
       if (!isAuthRes(auth)) {
         throw new Error(
