@@ -3,6 +3,7 @@ import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons-react";
 
 import { isStandardApiError, convertArrayValuesToStrings } from "./apiClient";
+import * as Sentry from "@sentry/react";
 import { STANDARD_ERROR_MESSAGE } from "../constants";
 
 export type Params = { [name: string]: any };
@@ -37,7 +38,7 @@ function useApi<DataType>({
       const data = res[unpackName] as DataType;
       setData(data);
       setError(false);
-    } catch (e) {
+    } catch (e: any) {
       let errorMessage;
       // TODO: Refacotor this logic and document...
       if (isStandardApiError(e)) {
@@ -47,7 +48,13 @@ function useApi<DataType>({
             ? tempMessage
             : Object.values(tempMessage).join("; ");
       } else {
-        // TODO: REPORT TO SENTRY
+        Sentry.withScope((scope) => {
+          scope.setContext("error_obj", e);
+          Sentry.captureMessage(
+            "useApi received non-standard Error",
+            "warning"
+          );
+        });
         errorMessage = STANDARD_ERROR_MESSAGE;
       }
       setData(defaultData);

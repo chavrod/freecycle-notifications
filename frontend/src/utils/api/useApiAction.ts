@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as Sentry from "@sentry/react";
 
 import { isStandardApiError, convertArrayValuesToStrings } from "./apiClient";
 import { STANDARD_ERROR_MESSAGE } from "../constants";
@@ -21,10 +22,15 @@ const useApiAction = ({ apiFunc, onSuccess }: useApiSubmitProps) => {
       resetErrors();
       const res = await apiFunc();
       onSuccess(res);
-    } catch (e) {
+    } catch (e: any) {
       if (!isStandardApiError(e)) {
-        // TODO: REPORT TO SENTRY
-        console.error("An unexpected error occurred:", e);
+        Sentry.withScope((scope) => {
+          scope.setContext("error_obj", e);
+          Sentry.captureMessage(
+            "useApiAction received non-standard Error",
+            "warning"
+          );
+        });
         setErrors(STANDARD_ERROR_MESSAGE);
         return;
       }

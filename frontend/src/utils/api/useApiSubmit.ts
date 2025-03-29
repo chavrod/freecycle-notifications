@@ -1,5 +1,6 @@
-import { UseFormReturnType } from "@mantine/form";
 import { useState } from "react";
+import { UseFormReturnType } from "@mantine/form";
+import * as Sentry from "@sentry/react";
 
 import { isStandardApiError, convertArrayValuesToStrings } from "./apiClient";
 import { STANDARD_ERROR_MESSAGE } from "../constants";
@@ -25,10 +26,15 @@ const useApiSubmit = ({ apiFunc, form, onSuccess }: useApiSubmitProps) => {
       resetErrors();
       const res = await apiFunc(formData);
       onSuccess(res);
-    } catch (e) {
+    } catch (e: any) {
       if (!isStandardApiError(e)) {
-        // TODO: REPORT TO SENTRY
-        console.error("An unexpected error occurred:", e);
+        Sentry.withScope((scope) => {
+          scope.setContext("error_obj", e);
+          Sentry.captureMessage(
+            "useApiSubmit received non-standard Error",
+            "warning"
+          );
+        });
         setNonFieldErrors(STANDARD_ERROR_MESSAGE);
         return;
       }
