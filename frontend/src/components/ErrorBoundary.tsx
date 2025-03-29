@@ -1,13 +1,23 @@
+import { useEffect } from "react";
 import { useRouteError, isRouteErrorResponse, Link } from "react-router-dom";
-import { Text, Button, Stack } from "@mantine/core";
 import { IconZoomExclamation } from "@tabler/icons-react";
+import { Text, Button, Stack } from "@mantine/core";
+import * as Sentry from "@sentry/react";
 
 import AppShellComponent from "./AppShell";
 import CentredFlexPaper from "./CenteredFlexPaper";
 
 const ErrorBoundary = () => {
   const rawError = useRouteError();
-  const error_res = isRouteErrorResponse(rawError) ? rawError : null;
+  const routing_error = isRouteErrorResponse(rawError) ? rawError : null;
+
+  // Send the error to Sentry when the component mounts
+  useEffect(() => {
+    // Only capture non-route errors or non-404 route errors
+    if (!routing_error || routing_error.status !== 404) {
+      Sentry.captureException(rawError);
+    }
+  }, [rawError, routing_error]);
 
   return (
     <AppShellComponent>
@@ -26,7 +36,7 @@ const ErrorBoundary = () => {
               textOverflow: "ellipsis",
             }}
           >
-            {error_res?.data || "It is an error. That is all we know."}
+            {routing_error?.data || "It is an error. That is all we know."}
           </Text>
         </Stack>
         <Link to="/" style={{ textDecoration: "none" }}>
