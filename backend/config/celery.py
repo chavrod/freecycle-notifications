@@ -9,19 +9,19 @@ from config.settings import TASKS_INTERVAL_MINUTES
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
-app = Celery("pingcycle")
+celery_app = Celery("pingcycle")
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.
 # - namespace='CELERY' means all celery-related configuration keys
 #   should have a `CELERY_` prefix.
-app.config_from_object("django.conf:settings", namespace="CELERY")
+celery_app.config_from_object("django.conf:settings", namespace="CELERY")
 
 # Load task modules from all registered Django apps.
-app.autodiscover_tasks()
+celery_app.autodiscover_tasks()
 
 
-@app.on_after_configure.connect
+@celery_app.on_after_configure.connect
 def setup_periodic_tasks(sender: Celery, **kwargs):
     sender.add_periodic_task(
         timedelta(minutes=TASKS_INTERVAL_MINUTES),
@@ -43,7 +43,7 @@ async def look_for_new_products():
     await scraper.run_main()
 
 
-@app.task
+@celery_app.task
 def look_for_new_products_task_and_notify():
     from pingcycle.tools.messaging_scheduler import MessageScheduler
     from pingcycle.tools.messaging_providers import get_messaging_provider
@@ -58,7 +58,7 @@ def look_for_new_products_task_and_notify():
     scheduler.send_notified_products_in_queue()
 
 
-@app.task
+@celery_app.task
 def delete_old_irrelevant_products():
     import pingcycle.apps.core.models as core_models
 
