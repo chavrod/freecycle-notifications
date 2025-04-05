@@ -1,5 +1,6 @@
 venv/
 # Created by https://www.gitignore.io
+.envs/
 
 ### OSX ###
 .DS_Store
