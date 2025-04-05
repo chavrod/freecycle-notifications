@@ -7,17 +7,20 @@ dns.setDefaultResultOrder("verbatim");
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), sentryVitePlugin({
-    org: "dchavro",
-    project: "pingcycle-frontend"
-  })],
+  plugins: [
+    react(),
+    sentryVitePlugin({
+      org: "dchavro",
+      project: "pingcycle-frontend",
+    }),
+  ],
 
   server: {
-    host: "127.0.0.1",
+    host: "localhost",
     port: 3000,
   },
 
   build: {
-    sourcemap: true
-  }
+    sourcemap: true,
+  },
 });

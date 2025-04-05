@@ -70,15 +70,20 @@ COPY ./compose/local/start /start
 RUN sed -i 's/\r$//g' /start
 RUN chmod +x /start
 
-COPY ./compose/local/worker_start /start-celeryworker
+COPY ./compose/production/worker_start /start-celeryworker
 RUN sed -i 's/\r$//g' /start-celeryworker
 RUN chmod +x /start-celeryworker
 
-COPY ./compose/local/beat_start /start-celerybeat
+COPY ./compose/production/beat_start /start-celerybeat
 RUN sed -i 's/\r$//g' /start-celerybeat
 RUN chmod +x /start-celerybeat
 
 # copy application code to WORKDIR
 COPY . ${APP_HOME}
+
+# Install Playwright browsers and deps
+RUN --mount=type=cache,target=/var/cache/playwright,sharing=locked,id=playwright \
+  playwright install chromium \
+  && playwright install-deps chromium
 
 ENTRYPOINT ["/entrypoint"]
