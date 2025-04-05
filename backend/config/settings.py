@@ -26,7 +26,7 @@ with open("/etc/pingcycle_config.json") as f:
 APP_NAME = CONFIG["APP_NAME"]
 
 
-BASE_DOMAIN = CONFIG.get("BASE_DOMAIN", "localhost")
+BASE_DOMAIN = CONFIG["BASE_DOMAIN"]
 
 
 ENV = CONFIG["ENV"]

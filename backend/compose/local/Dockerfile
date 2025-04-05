@@ -20,7 +20,6 @@ COPY ./requirements.txt .
 RUN pip wheel --wheel-dir /usr/src/app/wheels  \
   -r requirements.txt
 
-
 # Python 'run' stage
 FROM python AS python-run-stage
 

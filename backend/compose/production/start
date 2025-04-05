@@ -6,8 +6,8 @@ set -o nounset
 
 echo 'Begin prod Django start script'
 
-# python /app/manage.py collectstatic --noinput
+python manage.py collectstatic --noinput
 
-# python /app/manage.py update_site_name
+python manage.py update_site_name
 
-# exec /usr/local/bin/gunicorn config.wsgi --bind 0.0.0.0:5000 --chdir=/app
+exec /usr/local/bin/gunicorn config.wsgi --bind 0.0.0.0:8000 --chdir=/app
