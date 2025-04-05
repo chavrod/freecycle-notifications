@@ -11,7 +11,7 @@ from allauth.core.exceptions import (
     ImmediateHttpResponse,
 )
 
-from config.settings import TEMP_ALLOWED_EMAILS, BASE_ORIGIN, HEADLESS_FRONTEND_URLS
+from config.settings import TEMP_ALLOWED_EMAILS, FRONTEND_ORIGIN, HEADLESS_FRONTEND_URLS
 
 
 class CustomHeadlessAdapter(DefaultHeadlessAdapter):
@@ -21,7 +21,7 @@ class CustomHeadlessAdapter(DefaultHeadlessAdapter):
         if not url_ext:
             raise ImproperlyConfigured(f"HEADLESS_FRONTEND_URLS['{url_ext}']")
         if url_ext:
-            return render_url(self.request, f"{BASE_ORIGIN}/{url_ext}", **kwargs)
+            return render_url(self.request, f"{FRONTEND_ORIGIN}/{url_ext}", **kwargs)
 
 
 class CustomAccountAdapter(DefaultAccountAdapter):

@@ -14,7 +14,7 @@ from rest_framework.response import Response
 import sentry_sdk
 
 import pingcycle.apps.core.models as core_models
-from config.settings import BASE_ORIGIN, WH_BASE_DOMAIN, CONFIG, ENV
+from config.settings import FRONTEND_ORIGIN, WH_BASE_DOMAIN, CONFIG, ENV
 
 
 class UserFriendlyChatError(Exception):
@@ -104,7 +104,7 @@ class MessagingProvider:
 
     def _send_welcome_message(self, chat: core_models.Chat):
         user_email = chat.user.email
-        link = f"{BASE_ORIGIN}/dashboard"
+        link = f"{FRONTEND_ORIGIN}/dashboard"
         text = (
             f"👋 Hello from PingCycle, {chat.name}!\n\n"
             f"We have linked 🔗 this number to your existing account {self.bold(user_email)}\n\n"
@@ -150,7 +150,7 @@ class MessagingProvider:
             print("Expired linking session, raising error")
             raise UserFriendlyChatError(
                 message="Your linking session has expired 😢\n\n"
-                f"🔙 Head back to the app and try again: {BASE_ORIGIN}/dashboard\n\n"
+                f"🔙 Head back to the app and try again: {FRONTEND_ORIGIN}/dashboard\n\n"
                 "If the issue persists, contact help@pingcycle.org",
                 chat_reference=chat_reference,
             )
@@ -272,7 +272,7 @@ class Telegram(MessagingProvider):
                     message=(
                         f"⛔️ This chat is already associated with an account: {existing_chat.user.email}\n\n"
                         f"If you want to link this chat to the new account, first unlink it from the old account.\n\n"
-                        f"🔙 Log in to the app with the old account: {BASE_ORIGIN}\n\n"
+                        f"🔙 Log in to the app with the old account: {FRONTEND_ORIGIN}\n\n"
                         "If that is not possible, please contact help@pingcycle.org for assistance."
                     ),
                     chat_reference=from_id,
