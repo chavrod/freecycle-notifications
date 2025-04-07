@@ -81,6 +81,7 @@ services:
     container_name: "pingcycle_prod_frontend"
     ports:
       - 80:80
+      - 443:443
     environment:
       - VITE_ENV=${FRONTEND_ENV}
       - VITE_API_URL=${FRONTEND_API_URL}
@@ -88,6 +89,17 @@ services:
       - VITE_SENTRY_DSN=${FRONTEND_SENTRY_DSN}     
     depends_on:
       - "django"
+    volumes:
+      - ./nginx/conf/:/etc/nginx/conf.d/:ro
+      - ./certbot/www/:/var/www/certbot/:ro
+    networks:
+      - pingcycle_net
+
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - ./certbot/www/:/var/www/certbot/:rw
+      - ./certbot/conf/:/etc/letsencrypt/:rw
     networks:
       - pingcycle_net
 
