@@ -90,22 +90,23 @@ services:
     # depends_on:
     #   - "django"
     volumes:
-      - ./certbot/www/:/var/www/certbot/:ro
+      - certbot-webroot:/var/www/certbot:ro
     networks:
       - pingcycle_net
 
   certbot:
     image: certbot/certbot:latest
     volumes:
-      - ./certbot/www/:/var/www/certbot/:rw
+      - certbot-webroot:/var/www/certbot
       - ./certbot/conf/:/etc/letsencrypt/:rw
     networks:
       - pingcycle_net
 
 volumes:
-  pingcycle_prod_postgres_data: {}
-  pingcycle_prod_postgres_data_backups: {}
-  pingcycle_prod_redis_data: {}
+  certbot-webroot:  
+  pingcycle_prod_postgres_data:
+  pingcycle_prod_postgres_data_backups:
+  pingcycle_prod_redis_data:
 
 networks:
   pingcycle_net:
