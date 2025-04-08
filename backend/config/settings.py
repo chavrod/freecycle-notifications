@@ -93,6 +93,7 @@ INSTALLED_APPS = [
     "django.contrib.sites",
     "django.contrib.postgres",
     "rest_framework",
+    "anymail",
     # Authentication
     "allauth",
     "allauth.account",
@@ -205,11 +206,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 if DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 else:
-    pass
-    # TODO: Setup
-    # ANYMAIL = {"POSTMARK_SERVER_TOKEN": CONFIG["POSTMARK_API_KEY"]}
-    # EMAIL_BACKEND = "anymail.backends.postmark.EmailBackend"
-    # DEFAULT_FROM_EMAIL = "dmitry@bookiebase.ie"
+    EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+    ANYMAIL = {
+        "BREVO_API_KEY": CONFIG["BREVO_API_KEY"],
+    }
+
+DEFAULT_FROM_EMAIL = "PingCycle <no-reply@pingcycle.org>"
 
 
 # Auth
