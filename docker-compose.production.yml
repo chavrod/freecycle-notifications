@@ -81,16 +81,16 @@ services:
     container_name: "pingcycle_prod_frontend"
     ports:
       - 80:80
-      - 443:443
+      # - 443:443
     environment:
       - VITE_ENV=${FRONTEND_ENV}
       - VITE_API_URL=${FRONTEND_API_URL}
       - VITE_TELEGRAM_BOT_USERNAME=${FRONTEND_TELEGRAM_BOT_USERNAME}
       - VITE_SENTRY_DSN=${FRONTEND_SENTRY_DSN}     
-    depends_on:
-      - "django"
+    # depends_on:
+    #   - "django"
     volumes:
-      - ./nginx/conf/:/etc/nginx/conf.d/:ro
+      # - ./nginx/conf/:/etc/nginx/conf.d/:ro
       - ./certbot/www/:/var/www/certbot/:ro
     networks:
       - pingcycle_net
