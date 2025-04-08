@@ -96,9 +96,13 @@ services:
 
   certbot:
     image: certbot/certbot:latest
+    # TODO:
+    # entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    # Entry point ensures certbot renews the certificate periodically.
     volumes:
-      - certbot-webroot:/var/www/certbot
+      - certbot-webroot:/var/www/certbot:rw
       - ./certbot/conf/:/etc/letsencrypt/:rw
+
     networks:
       - pingcycle_net
 
