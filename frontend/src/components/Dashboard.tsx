@@ -12,7 +12,6 @@ import {
   IconTrash,
   IconBrandTelegram,
   IconClock,
-  IconBellPlus,
   IconKeyOff,
 } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
@@ -25,16 +24,12 @@ import useApi from "../utils/api/useApi";
 import coreApi from "../utils/api/coreApi";
 import { Keyword, Chat } from "../utils/api/api_types";
 import { ChatStateNameAndEmoji } from "../utils/enum_records";
-import AddKeywordModal from "./AddKeywordModal";
+import AddKeywordForm from "./AddKeywordForm";
 import LinkChatModal from "./LinkChatModal";
 import { useEffect, useState } from "react";
 import { STANDARD_ERROR_MESSAGE } from "../utils/constants";
 
 export default function Dashboard() {
-  const [
-    openedKewordModal,
-    { open: openKewordModal, close: closeKewordModal },
-  ] = useDisclosure(false);
   const [
     openedChatLinkModal,
     { open: openChatLinkModal, close: closeChatLinkModal },
@@ -88,14 +83,6 @@ export default function Dashboard() {
   };
   return (
     <>
-      <AddKeywordModal
-        opened={openedKewordModal}
-        onClose={closeKewordModal}
-        onSuccess={(newKeyword) => {
-          setKeywordsData((prevKeywords) => [newKeyword, ...prevKeywords]);
-          closeKewordModal();
-        }}
-      />
       <LinkChatModal
         opened={openedChatLinkModal}
         onClose={closeChatLinkModal}
@@ -131,15 +118,21 @@ export default function Dashboard() {
           )}
         </Paper>
         {!chatsRes.loading ? (
-          <Button
-            w={{ base: "100%", xs: 400 }}
-            leftSection={<IconBellPlus />}
-            onClick={openKewordModal}
-            disabled={chatsData.length == 0}
-          >
-            Add Keyword
-          </Button>
+          <AddKeywordForm
+            submitButtonDisabled={chatsData.length === 0}
+            onSuccess={(newKeyword) => {
+              setKeywordsData((prevKeywords) => [newKeyword, ...prevKeywords]);
+            }}
+          />
         ) : (
+          // <Button
+          //   w={{ base: "100%", xs: 400 }}
+          //   leftSection={<IconBellPlus />}
+          //   onClick={openKewordModal}
+          //   disabled={chatsData.length == 0}
+          // >
+          //   Add Keyword
+          // </Button>
           <></>
         )}
 
@@ -169,7 +162,7 @@ export default function Dashboard() {
                     <Text c="grey">•</Text>
                     <Group gap={8}>
                       <IconBrandTelegram color="grey" size={20} stroke={1.8} />
-                      <Text c="grey">{keyword.messages_count}</Text>
+                      <Text c="grey">{keyword.messages_count || 0}</Text>
                     </Group>
                   </Group>
                 </Stack>
