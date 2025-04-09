@@ -90,7 +90,7 @@ services:
     # depends_on:
     #   - "django"
     volumes:
-      - certbot-webroot:/var/www/certbot:ro
+      - certbot-webroot:/var/www/certbot
     networks:
       - pingcycle_net
 
@@ -100,8 +100,8 @@ services:
     # entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     # Entry point ensures certbot renews the certificate periodically.
     volumes:
-      - certbot-webroot:/var/www/certbot:rw
-      - ./certbot/conf/:/etc/letsencrypt/:rw
+      - certbot-webroot:/var/www/certbot
+      - ./certbot/conf/:/etc/letsencrypt
 
     networks:
       - pingcycle_net
