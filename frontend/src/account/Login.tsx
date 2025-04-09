@@ -81,7 +81,7 @@ function LoginForm() {
             ? "You must verify your email first"
             : STANDARD_ERROR_MESSAGE
         );
-      } else {
+      } else if (resCode !== 200) {
         // Report to Sentry for any other status code
         Sentry.withScope((scope) => {
           scope.setTag("auth_stage", "login");
