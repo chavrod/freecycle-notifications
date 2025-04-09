@@ -58,10 +58,7 @@ else:
     # CSRF
     CSRF_COOKIE_SECURE = True
     CSRF_COOKIE_DOMAIN = f".{BASE_DOMAIN}"
-    CSRF_TRUSTED_ORIGINS = [
-        FRONTEND_ORIGIN,  # https://pingcycle.org
-        f"https://{WH_BASE_DOMAIN}",  # https://core.pingcycle.org
-    ]
+    CSRF_TRUSTED_ORIGINS = [f"https://*.{BASE_DOMAIN}"]
     # CORS
     CORS_ALLOW_ALL_ORIGINS = False
     CORS_ALLOWED_ORIGINS = [FRONTEND_ORIGIN]
