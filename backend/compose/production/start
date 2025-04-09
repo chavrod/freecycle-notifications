@@ -6,7 +6,7 @@ set -o nounset
 
 echo 'Begin prod Django start script'
 
-# python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput
 
 python manage.py update_site_name
 
