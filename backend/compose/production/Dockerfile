@@ -54,6 +54,8 @@ COPY --from=python-build-stage /usr/src/app/wheels  /wheels/
 # use wheels to install python dependencies
 RUN pip install --no-cache-dir --no-index --find-links=/wheels/ /wheels/* \
   && rm -rf /wheels/
+# Install Gunicorn separately
+RUN pip install gunicorn==23.0.0
 
 
 COPY --chown=django:django ./compose/production/entrypoint /entrypoint
