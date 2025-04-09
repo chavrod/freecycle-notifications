@@ -48,8 +48,7 @@ if ENV == "DEV":
     SESSION_COOKIE_DOMAIN = BASE_DOMAIN
     SESSION_COOKIE_SECURE = False
 else:
-    # TODO: DELETE temp
-    DEBUG = True
+    DEBUG = False
 
     WH_BASE_DOMAIN = f"core.{BASE_DOMAIN}"
     FRONTEND_ORIGIN = f"https://{BASE_DOMAIN}"
