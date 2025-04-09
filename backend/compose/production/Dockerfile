@@ -81,9 +81,7 @@ COPY --chown=django:django . ${APP_HOME}
 
 # Install Playwright browsers and deps
 RUN --mount=type=cache,target=/var/cache/playwright,sharing=locked,id=playwright \
-  playwright install chromium \
-  && playwright install-deps chromium
-
+  playwright install
 # make django owner of the WORKDIR directory as well.
 RUN chown -R django:django ${APP_HOME}
 
