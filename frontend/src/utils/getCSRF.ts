@@ -5,14 +5,21 @@ const getCookie = (name: string): string | null => {
   return null;
 };
 
-const setCookie = (name: string, value: string, days?: number) => {
+const setCookie = (
+  name: string,
+  value: string,
+  domain: string,
+  days?: number
+) => {
   let expires = "";
   if (days) {
     const date = new Date();
     date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
     expires = `; expires=${date.toUTCString()}`;
   }
-  document.cookie = `${name}=${value || ""}${expires}; path=/`;
+  document.cookie = `${name}=${
+    value || ""
+  }${expires}; path=/; domain=${domain}`;
 };
 
 export default async function getClientSideCSRF(): Promise<string | null> {
@@ -31,7 +38,7 @@ export default async function getClientSideCSRF(): Promise<string | null> {
   }
 
   // Set new CSRF token as a cookie
-  setCookie("csrftoken", csrfToken, 1); // The token will expire in 1 day
+  setCookie("csrftoken", csrfToken, import.meta.env.VITE_COOKIE_DOMAIN, 1); // The token will expire in 1 day
 
   return csrfToken;
 }

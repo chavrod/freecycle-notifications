@@ -81,7 +81,8 @@ services:
         VITE_ENV: ${FRONTEND_ENV}
         VITE_API_URL: ${FRONTEND_API_URL}
         VITE_TELEGRAM_BOT_USERNAME: ${FRONTEND_TELEGRAM_BOT_USERNAME}
-        VITE_SENTRY_DSN: ${FRONTEND_SENTRY_DSN}     
+        VITE_SENTRY_DSN: ${FRONTEND_SENTRY_DSN}
+        VITE_COOKIE_DOMAIN: ${FRONTEND_COOKIE_DOMAIN}        
     image: pingcycle_prod_frontend
     container_name: "pingcycle_prod_frontend"
     ports:
@@ -98,7 +99,6 @@ services:
   certbot:
     image: certbot/certbot:latest
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    # Entry point ensures certbot renews the certificate periodically.
     volumes:
       - certbot-webroot:/var/www/certbot
       - ./certbot/conf/:/etc/letsencrypt
