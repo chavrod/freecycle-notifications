@@ -61,6 +61,10 @@ COPY --from=python-build-stage /usr/src/app/wheels  /wheels/
 RUN pip install --no-cache-dir --no-index --find-links=/wheels/ /wheels/* \
   && rm -rf /wheels/
 
+# Install Playwright browsers and deps
+RUN --mount=type=cache,target=/var/cache/playwright,sharing=locked,id=playwright \
+  playwright install
+
 COPY ./compose/production/entrypoint /entrypoint
 RUN sed -i 's/\r$//g' /entrypoint
 RUN chmod +x /entrypoint
@@ -80,8 +84,5 @@ RUN chmod +x /start-celerybeat
 # copy application code to WORKDIR
 COPY . ${APP_HOME}
 
-# Install Playwright browsers and deps
-RUN --mount=type=cache,target=/var/cache/playwright,sharing=locked,id=playwright \
-  playwright install
 
 ENTRYPOINT ["/entrypoint"]

@@ -57,6 +57,10 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels/ /wheels/* \
 # Install Gunicorn separately
 RUN pip install gunicorn==23.0.0
 
+# Install Playwright browsers and deps
+RUN playwright install chromium \
+  && playwright install-deps chromium
+
 
 COPY --chown=django:django ./compose/production/entrypoint /entrypoint
 RUN sed -i 's/\r$//g' /entrypoint
@@ -79,9 +83,6 @@ RUN chmod +x /start-celerybeat
 
 COPY --chown=django:django . ${APP_HOME}
 
-# Install Playwright browsers and deps
-RUN playwright install chromium \
-  && playwright install-deps chromium
 
 # make django owner of the WORKDIR directory as well.
 RUN chown -R django:django ${APP_HOME}
