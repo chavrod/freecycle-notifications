@@ -66,7 +66,8 @@ RUN playwright install-deps chromium
 
 # Install Playwright browsers as django user
 USER django
-RUN playwright install chromium
+ENV HOME=/tmp
+RUN mkdir -p /tmp/.cache && playwright install chromium
 USER root
 
 COPY --chown=django:django ./compose/production/entrypoint /entrypoint
