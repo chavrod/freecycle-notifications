@@ -104,7 +104,7 @@ class MessagingProvider:
 
     def _send_welcome_message(self, chat: core_models.Chat):
         user_email = chat.user.email
-        link = f"{FRONTEND_ORIGIN}/dashboard"
+        link = f"{FRONTEND_ORIGIN}"
         text = (
             f"👋 Hello from PingCycle, {chat.name}!\n\n"
             f"We have linked 🔗 this number to your existing account {self.bold(user_email)}\n\n"
@@ -150,7 +150,7 @@ class MessagingProvider:
             print("Expired linking session, raising error")
             raise UserFriendlyChatError(
                 message="Your linking session has expired 😢\n\n"
-                f"🔙 Head back to the app and try again: {FRONTEND_ORIGIN}/dashboard\n\n"
+                f"🔙 Head back to the app and try again: {FRONTEND_ORIGIN}\n\n"
                 "If the issue persists, contact help@pingcycle.org",
                 chat_reference=chat_reference,
             )
