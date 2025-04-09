@@ -91,6 +91,7 @@ services:
     #   - "django"
     volumes:
       - certbot-webroot:/var/www/certbot
+      - ./certbot/conf/live:/etc/nginx/ssl/live:ro
     networks:
       - pingcycle_net
 
