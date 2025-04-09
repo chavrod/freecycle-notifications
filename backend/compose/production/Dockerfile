@@ -57,10 +57,17 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels/ /wheels/* \
 # Install Gunicorn separately
 RUN pip install gunicorn==23.0.0
 
-# Install Playwright browsers and deps
-RUN playwright install chromium \
-  && playwright install-deps chromium
+# # Install Playwright browsers and deps
+# RUN playwright install chromium \
+#   && playwright install-deps chromium
 
+# Install Playwright system dependencies (as root)
+RUN playwright install-deps chromium
+
+# Install Playwright browsers as django user
+USER django
+RUN playwright install chromium
+USER root
 
 COPY --chown=django:django ./compose/production/entrypoint /entrypoint
 RUN sed -i 's/\r$//g' /entrypoint
