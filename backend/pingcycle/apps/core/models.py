@@ -110,9 +110,9 @@ class NotifiedProductManager(models.Manager):
                 .order_by("-similarity")
             )
 
-            print(
-                f"{matched_products.count()} products found for keyword {keyword}: {matched_products}"
-            )
+            # print(
+            #     f"{matched_products.count()} products found for keyword {keyword}: {matched_products}"
+            # )
 
             # Track matches
             for product in matched_products:
