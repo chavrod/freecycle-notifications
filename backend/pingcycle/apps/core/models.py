@@ -91,12 +91,16 @@ class NotifiedProductManager(models.Manager):
         if not products_qs:
             print("No new products...")
             return
+        print("Checking CREATED products...")
+        for product in products_qs:
+            print(f"{product.product_name}: ", product.description)
         # Set to track product IDs that have matched keywords
         matching_product_ids = set()
         # For each keyword linked to an active chat, check if there are any matches
         for keyword in Keyword.objects.filter(
             user__chats__state=Chat.State.ACTIVE
         ).distinct():
+            print("Checking for keyword: ", keyword.name)
 
             # Annotate the products with their similarity scores for the current keyword
             matched_products = (
@@ -110,9 +114,9 @@ class NotifiedProductManager(models.Manager):
                 .order_by("-similarity")
             )
 
-            # print(
-            #     f"{matched_products.count()} products found for keyword {keyword}: {matched_products}"
-            # )
+            print(
+                f"{matched_products.count()} products found for keyword {keyword}: {matched_products}"
+            )
 
             # Track matches
             for product in matched_products:
