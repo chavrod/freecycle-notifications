@@ -18,6 +18,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
     volumes:
       - /etc/pingcycle_config.json:/etc/pingcycle_config.json
+      - /etc/scraper_proxies.txt:/etc/scraper_proxies.txt
     ports:
       - '8000:8000'
     command: /start
