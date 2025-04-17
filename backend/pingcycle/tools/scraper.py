@@ -88,7 +88,7 @@ class Scraper:
                         await self.send_capture_exception(e)
 
                         await browser.close()
-                        proxy_configs.remove()
+                        proxy_configs.remove(proxy_config)
 
                         continue  # Try next proxy
 
@@ -189,7 +189,7 @@ class Scraper:
                 await sublocation_span.inner_text() if sublocation_span else ""
             )
 
-            print(f"Addingg new Product: {product_name}")
+            print(f"Adding new Product: {product_name}")
             products_to_create.append(
                 core_models.NotifiedProduct(
                     product_name=product_name,
