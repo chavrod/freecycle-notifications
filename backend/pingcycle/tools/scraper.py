@@ -186,13 +186,15 @@ class Scraper:
                 product_img_url = await product_img_div.get_attribute("data-src")
 
             # Get product sublocation
+            sublocation = None
             sublocation_div = await product.query_selector(
                 ".post-list-item-header-icon.location-icon"
             )
-            sublocation_span = await sublocation_div.query_selector("span")
-            sublocation = (
-                await sublocation_span.inner_text() if sublocation_span else ""
-            )
+            if sublocation_div:
+                sublocation_span = await sublocation_div.query_selector("span")
+                sublocation = (
+                    await sublocation_span.inner_text() if sublocation_span else ""
+                )
 
             print(f"Adding new Product: {product_name}")
             products_to_create.append(
