@@ -2,6 +2,7 @@ from datetime import datetime
 import asyncio
 from typing import Tuple, Dict, Optional, Literal, Any
 from asgiref.sync import sync_to_async
+import random
 
 import sentry_sdk
 from playwright.async_api import async_playwright, Page, Playwright, Browser
@@ -40,6 +41,10 @@ def load_proxies_from_file(path: str):
                 )
     except Exception as e:
         print(f"Error loading proxies: {e}")
+
+    # Shuffle the proxies list randomly
+    random.shuffle(proxies)
+
     return proxies
 
 
