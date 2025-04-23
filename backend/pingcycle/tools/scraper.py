@@ -71,6 +71,7 @@ class Scraper:
                 for proxy_config in proxy_configs.copy():
                     print(f"Trying proxy {proxy_config['server']} for town {town_name}")
 
+                    browser = None
                     try:
                         browser, page = await self._open_blank_browser_page(
                             p, proxy_config
@@ -92,7 +93,8 @@ class Scraper:
                         print(f"❌ Proxy failed: {proxy_config['server']} - {e}")
                         await self.send_capture_exception(e)
 
-                        await browser.close()
+                        if browser:
+                            await browser.close()
                         proxy_configs.remove(proxy_config)
 
                         continue  # Try next proxy
