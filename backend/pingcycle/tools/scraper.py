@@ -83,7 +83,7 @@ class Scraper:
                         print(
                             f"✅ Success for {town_name} using {proxy_config['server']}"
                         )
-                        await asyncio.sleep(2)
+                        await asyncio.sleep(random.randint(10, 30))
 
                         success = True
                         current_town_index += 1
