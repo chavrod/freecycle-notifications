@@ -20,6 +20,7 @@ from config.settings import (
     CHAT_TEMP_UUID_MAX_VALID_SECONDS,
     MAX_CHATS_PER_USER,
     MAX_RETRIES_PER_MESSAGE,
+    MAX_RETRIES_PER_PROXY,
     ENV,
 )
 
@@ -334,3 +335,55 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message to {self.chat} with status {self.status}"
+
+
+class Proxy(models.Model):
+
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE"
+        INACTIVE = "INACTIVE"
+
+    status = models.CharField(
+        max_length=30, choices=Status.choices, default=Status.ACTIVE
+    )
+    domain = models.CharField(max_length=200, blank=False)
+    port = models.IntegerField()
+    username = models.CharField(max_length=200, blank=False)
+    password = models.CharField(max_length=200, blank=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used = models.DateTimeField(null=True)
+    fail_count = models.IntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(fields=["domain", "port"], name="unique_domain_port_combo")
+        ]
+
+    @classmethod
+    def get_relevant_proxy(cls):
+        # Try to get an unused proxy (i.e., last_used is None)
+        unused_proxy = cls.objects.filter(
+            status=cls.Status.ACTIVE, last_used__isnull=True
+        ).first()
+
+        if unused_proxy:
+            return unused_proxy
+
+        # If no unused proxy is available, get the one used the longest time ago
+        oldest_used_proxy = (
+            cls.objects.filter(status=cls.Status.ACTIVE, last_used__isnull=False)
+            .order_by("last_used")
+            .first()
+        )
+
+        return oldest_used_proxy
+
+    def update_usage(self, success: bool):
+        self.last_used = timezone.now()
+
+        if not success:
+            self.fail_count += 1
+            if self.fail_count > MAX_RETRIES_PER_PROXY:
+                self.status = self.Status.INACTIVE
+
+        self.save()
