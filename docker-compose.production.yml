@@ -103,7 +103,6 @@ services:
     volumes:
       - certbot-webroot:/var/www/certbot
       - ./certbot/conf/:/etc/letsencrypt
-
     networks:
       - pingcycle_net
 
