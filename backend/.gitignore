@@ -2,6 +2,8 @@ venv/
 # Created by https://www.gitignore.io
 .envs/
 
+scraper_proxies.txt
+
 ### OSX ###
 .DS_Store
 .AppleDouble
