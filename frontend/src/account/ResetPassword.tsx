@@ -25,6 +25,8 @@ export default function ResetPassword() {
 
   const [visible, { toggle }] = useDisclosure(false);
 
+  const [error, setError] = useState<string | null>(null);
+
   const [confirmationRes, setConfirmationRes] = useState<{
     fetching: boolean;
     content: AuthRes | null;
@@ -45,6 +47,7 @@ export default function ResetPassword() {
 
   const handleFormSubmit = async () => {
     try {
+      setError(null);
       setConfirmationRes({ ...confirmationRes, fetching: true });
 
       const { password1 } = form.values;
@@ -53,6 +56,8 @@ export default function ResetPassword() {
 
       if (res.status === 400) {
         form.setErrors(formatAuthErrors(res.errors, { password: "password1" }));
+        // TODO: Temp workaround as param 'password' is missing
+        setError(res.errors.map((error: any) => error.message).join("\n"));
       } else if (res.status !== 401) {
         Sentry.withScope((scope) => {
           scope.setTag("auth_stage", "reset_password");
@@ -121,6 +126,11 @@ export default function ResetPassword() {
           >
             Reset Password
           </Button>
+          {error && (
+            <Text size="sm" c="red" mt="md">
+              {error}
+            </Text>
+          )}
         </form>
       ) : (
         <Text>Invalid password reset token.</Text>
