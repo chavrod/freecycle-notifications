@@ -39,12 +39,13 @@ export default function AddKeywordForm({
   });
 
   return (
-    <form onSubmit={form.onSubmit(handleSubmit)}>
+    <form onSubmit={form.onSubmit(handleSubmit)} style={{ width: "100%" }}>
       <TextInput
         {...form.getInputProps("name")}
-        description="Be specific! For example, instead of 'furniture', use 'chair'."
+        size="md"
+        description="Be specific. e.g. instead of 'furniture', use 'chair'"
         placeholder="Enter a new keyword"
-        mb="md"
+        mb="sm"
       />
       {nonFieldErrors && (
         <Text size="sm" c="red" my="md">
