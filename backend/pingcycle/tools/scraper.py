@@ -20,90 +20,88 @@ TOWN_NAME_URL_EXT = [
 ]
 
 
-def load_proxies_from_file(path: str):
-    proxies = []
-    try:
-        with open(path, "r") as f:
-            for line in f:
-                line = line.strip()
-                if not line or ":" not in line:
-                    continue
-                parts = line.split(":")
-                if len(parts) != 4:
-                    continue  # Skip invalid format
-                ip, port, username, password = parts
-                proxies.append(
-                    {
-                        "server": f"http://{ip}:{port}",
-                        "username": username,
-                        "password": password,
-                    }
-                )
-    except Exception as e:
-        print(f"Error loading proxies: {e}")
+# def load_proxies_from_file(path: str):
+#     proxies = []
+#     try:
+#         with open(path, "r") as f:
+#             for line in f:
+#                 line = line.strip()
+#                 if not line or ":" not in line:
+#                     continue
+#                 parts = line.split(":")
+#                 if len(parts) != 4:
+#                     continue  # Skip invalid format
+#                 ip, port, username, password = parts
+#                 proxies.append(
+#                     {
+#                         "server": f"http://{ip}:{port}",
+#                         "username": username,
+#                         "password": password,
+#                     }
+#                 )
+#     except Exception as e:
+#         print(f"Error loading proxies: {e}")
 
-    # Shuffle the proxies list randomly
-    random.shuffle(proxies)
+#     # Shuffle the proxies list randomly
+#     random.shuffle(proxies)
 
-    return proxies
+#     return proxies
 
 
 class Scraper:
+
+    def __init__(self):
+        self.user_agents_pool = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0",
+            "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+        ]
+
     async def run_main(self):
         print("Started Running Scraper")
         self.start_time = datetime.now()
 
-        proxy_configs = load_proxies_from_file("/etc/scraper_proxies.txt")
-        if not proxy_configs:
-            sentry_sdk.capture_message(
-                "❌ No proxies found in /etc/scraper_proxies.txt", level="fatal"
-            )
-            return
-
         async with async_playwright() as p:
-            current_town_index = 0
+            for town_name, town_url_ext in TOWN_NAME_URL_EXT:
 
-            while current_town_index < len(TOWN_NAME_URL_EXT):
-                town_name, town_url_ext = TOWN_NAME_URL_EXT[current_town_index]
+                while True:
+                    proxy = core_models.Proxy.get_relevant_proxy()
 
-                success = False
+                    if proxy is None:
+                        error_msg = f"🚨 ALL PROXIES FAILED"
+                        print("Scraping error: ", error_msg)
+                        sentry_sdk.capture_message(error_msg, level="error")
+                        return  # Stop execution
 
-                for proxy_config in proxy_configs.copy():
-                    print(f"Trying proxy {proxy_config['server']} for town {town_name}")
+                    print(
+                        f"Trying proxy domain '{proxy.domain}' at port {proxy.port} for town {town_name}"
+                    )
 
                     browser = None
                     try:
-                        browser, page = await self._open_blank_browser_page(
-                            p, proxy_config
-                        )
+                        browser, page = await self._open_blank_browser_page(p, proxy)
 
                         await self._create_products_from_town(
                             page, town_name, town_url_ext
                         )
-                        print(
-                            f"✅ Success for {town_name} using {proxy_config['server']}"
-                        )
+                        print(f"✅ Success")
+
+                        proxy.update_usage(success=True)
                         await asyncio.sleep(random.randint(10, 30))
 
-                        success = True
-                        current_town_index += 1
                         await browser.close()
                         break  # Go to next town
                     except Exception as e:
-                        print(f"❌ Proxy failed: {proxy_config['server']} - {e}")
+                        print(f"❌ Proxy failed - {e}")
+
+                        proxy.update_usage(success=False)
                         await self.send_capture_exception(e)
 
                         if browser:
                             await browser.close()
-                        proxy_configs.remove(proxy_config)
 
                         continue  # Try next proxy
-
-                if not success:
-                    error_msg = f"🚨 ALL PROXIES FAILED"
-                    print(error_msg)
-                    sentry_sdk.capture_message(error_msg, level="error")
-                    break  # Stop execution
 
             print("🏁 Finished Running Scraper")
 
@@ -221,19 +219,20 @@ class Scraper:
         return f"https://www.freecycle.org/town/{town_ext}"
 
     async def _open_blank_browser_page(
-        self, playwright: Playwright, proxy_config: dict
+        self, playwright: Playwright, proxy: core_models.Proxy
     ) -> Tuple[Browser, Page]:
         # Launch the browser and set context
         browser = await playwright.chromium.launch(
             proxy={
-                "server": proxy_config["server"],
-                "username": proxy_config["username"],
-                "password": proxy_config["password"],
+                "server": f"http://{proxy.domain}:{proxy.port}",
+                "username": proxy.username,
+                "password": proxy.password,
             }
         )
-        context = await browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
-        )
+        # Select a random user agent from the pool
+        random_user_agent = random.choice(self.user_agents_pool)
+        print("Selected user agent: ", random_user_agent)
+        context = await browser.new_context(user_agent=random_user_agent)
         print("Browser and Context created")
 
         print("Creating new page...")
