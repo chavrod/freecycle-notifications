@@ -66,7 +66,7 @@ class Scraper:
             for town_name, town_url_ext in TOWN_NAME_URL_EXT:
 
                 while True:
-                    proxy = core_models.Proxy.get_relevant_proxy()
+                    proxy = await sync_to_async(core_models.Proxy.get_relevant_proxy)()
 
                     if proxy is None:
                         error_msg = f"🚨 ALL PROXIES FAILED"
@@ -87,7 +87,7 @@ class Scraper:
                         )
                         print(f"✅ Success")
 
-                        proxy.update_usage(success=True)
+                        await sync_to_async(proxy.update_usage)(True)
                         await asyncio.sleep(random.randint(10, 30))
 
                         await browser.close()
@@ -95,7 +95,7 @@ class Scraper:
                     except Exception as e:
                         print(f"❌ Proxy failed - {e}")
 
-                        proxy.update_usage(success=False)
+                        await sync_to_async(proxy.update_usage)(False)
                         await self.send_capture_exception(e)
 
                         if browser:
