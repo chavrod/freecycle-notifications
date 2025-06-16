@@ -33,6 +33,17 @@ def load_proxies_from_file(relative_path: str):
     return proxies
 
 
+def get_proxy_by_port(proxies, port):
+    matched_proxy = None
+    for proxy in proxies:
+        matched_proxy = proxy if str(port) in proxy["server"] else None
+
+        if matched_proxy:
+            break
+
+    return matched_proxy
+
+
 async def check_ip(test_proxy):
     async with async_playwright() as p:
         browser, page = await _open_blank_browser_page(p, test_proxy)
@@ -72,9 +83,10 @@ async def _open_blank_browser_page(playwright: Playwright, proxy_config: dict):
 if __name__ == "__main__":
     try:
         proxies = load_proxies_from_file("scraper_proxies.txt")
-        test_proxy = proxies[0]
+        proxy = get_proxy_by_port(proxies, 10088)
+        assert proxy is not None
 
-        asyncio.run(check_ip(test_proxy))
+        asyncio.run(check_ip(proxy))
     except Exception as e:
         print("Error: ", e)
         traceback.print_exc()
