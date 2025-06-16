@@ -3,6 +3,7 @@ import asyncio
 from typing import Tuple, Dict, Optional, Literal, Any
 from asgiref.sync import sync_to_async
 import random
+import traceback
 
 import sentry_sdk
 from playwright.async_api import async_playwright, Page, Playwright, Browser
@@ -18,6 +19,10 @@ TOWN_NAME_URL_EXT = [
     ("County Wexford", "WexfordIRE"),
     ("Waterford", "WaterfordIE"),
 ]
+
+
+class OpenBlankPageError(Exception):
+    pass
 
 
 # def load_proxies_from_file(path: str):
@@ -92,8 +97,11 @@ class Scraper:
 
                         await browser.close()
                         break  # Go to next town
+                    except OpenBlankPageError:
+                        pass  # Try again
                     except Exception as e:
                         print(f"❌ Proxy failed - {e}")
+                        traceback.print_exc()
 
                         await sync_to_async(proxy.update_usage)(False)
                         await self.send_capture_exception(e)
@@ -221,23 +229,32 @@ class Scraper:
     async def _open_blank_browser_page(
         self, playwright: Playwright, proxy: core_models.Proxy
     ) -> Tuple[Browser, Page]:
-        # Launch the browser and set context
-        browser = await playwright.chromium.launch(
-            proxy={
-                "server": f"http://{proxy.domain}:{proxy.port}",
-                "username": proxy.username,
-                "password": proxy.password,
-            }
-        )
-        # Select a random user agent from the pool
-        random_user_agent = random.choice(self.user_agents_pool)
-        print("Selected user agent: ", random_user_agent)
-        context = await browser.new_context(user_agent=random_user_agent)
-        print("Browser and Context created")
+        try:
+            # Launch the browser and set context
+            browser = await playwright.chromium.launch(
+                proxy={
+                    "server": f"http://{proxy.domain}:{proxy.port}",
+                    "username": proxy.username,
+                    "password": proxy.password,
+                }
+            )
+            # Select a random user agent from the pool
+            random_user_agent = random.choice(self.user_agents_pool)
+            print("Selected user agent: ", random_user_agent)
+            context = await browser.new_context(user_agent=random_user_agent)
+            print("Browser and Context created")
 
-        print("Creating new page...")
-        page: Page = await context.new_page()
-        return browser, page
+            print("Creating new page...")
+            page: Page = await context.new_page()
+            return browser, page
+        except Exception as e:
+            print("🔴 Error getting blank page: ", e)
+            traceback.print_exc()
+            await self.send_sentry_message(
+                message="Error getting blank page",
+                level="error",
+            )
+            raise OpenBlankPageError
 
     async def _ensure_list_view(self, page: Page) -> bool:
         selector = "li.item-list-header-filter-icon.item-list-list-view.hover-state"
