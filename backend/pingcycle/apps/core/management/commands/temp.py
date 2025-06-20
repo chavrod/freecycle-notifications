@@ -54,8 +54,8 @@ class Command(BaseCommand):
         # prods.delete()
 
         # print("Start scraping")
-        # scraper = Scraper()
-        # asyncio.run(scraper.run_main())
+        scraper = Scraper()
+        asyncio.run(scraper.run_main(with_proxy=False))
 
         # print("Products scraped")
         # for product in core_models.NotifiedProduct.objects.all():
