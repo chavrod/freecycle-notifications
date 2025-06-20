@@ -63,7 +63,7 @@ class Scraper:
             "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
         ]
 
-    async def run_main(self):
+    async def run_main(self, with_proxy=True):
         print("Started Running Scraper")
         self.start_time = datetime.now()
 
@@ -71,17 +71,21 @@ class Scraper:
             for town_name, town_url_ext in TOWN_NAME_URL_EXT:
 
                 while True:
-                    proxy = await sync_to_async(core_models.Proxy.get_relevant_proxy)()
+                    proxy = None
+                    if with_proxy:
+                        proxy = await sync_to_async(
+                            core_models.Proxy.get_relevant_proxy
+                        )()
 
-                    if proxy is None:
-                        error_msg = f"🚨 ALL PROXIES FAILED"
-                        print("Scraping error: ", error_msg)
-                        sentry_sdk.capture_message(error_msg, level="error")
-                        return  # Stop execution
+                        if proxy is None:
+                            error_msg = f"🚨 ALL PROXIES FAILED"
+                            print("Scraping error: ", error_msg)
+                            sentry_sdk.capture_message(error_msg, level="error")
+                            return  # Stop execution
 
-                    print(
-                        f"Trying proxy domain '{proxy.domain}' at port {proxy.port} for town {town_name}"
-                    )
+                        print(
+                            f"Trying proxy domain '{proxy.domain}' at port {proxy.port} for town {town_name}"
+                        )
 
                     browser = None
                     try:
@@ -92,7 +96,8 @@ class Scraper:
                         )
                         print(f"✅ Success")
 
-                        await sync_to_async(proxy.update_usage)(True)
+                        if with_proxy:
+                            await sync_to_async(proxy.update_usage)(True)
                         await asyncio.sleep(random.randint(10, 30))
 
                         await browser.close()
@@ -100,10 +105,11 @@ class Scraper:
                     except OpenBlankPageError:
                         pass  # Try again
                     except Exception as e:
-                        print(f"❌ Proxy failed - {e}")
+                        print(f"❌ Fail - {e}")
                         traceback.print_exc()
 
-                        await sync_to_async(proxy.update_usage)(False)
+                        if with_proxy:
+                            await sync_to_async(proxy.update_usage)(False)
                         await self.send_capture_exception(e)
 
                         if browser:
@@ -128,93 +134,111 @@ class Scraper:
         await page.goto(url)
         await page.content()
 
+        await self.accept_privacy_dialog_if_present(page)
+
         # List View shows all needed info
         await self._ensure_list_view(page)
 
-        parent_div = await page.query_selector("#fc-data")
-        products = await parent_div.query_selector_all("div[data-id]")
-
         products_to_create = []
 
-        for index, product in enumerate(products):
-            # Is product on offer?
-            is_offered = await product.query_selector(".text-offer")
-            if not is_offered:
-                continue
+        global_index = 0  # will be used if we need to load more items
 
-            # Is it a recent product?
-            time_ago_span = await product.query_selector(
-                "span.post-list-item-date.text-lighten-less"
+        all_found = False
+        while not all_found:
+            products_locator = page.locator("#fc-data div[data-id]")
+
+            products_count = await products_locator.count()
+
+            start_loop_from_index = (
+                global_index + 1 if global_index > 0 else global_index
             )
-            time_ago = await time_ago_span.inner_text()
-            if not "minutes" in time_ago:
-                break
+            if start_loop_from_index == products_count:
+                print("NEW PRODUCTS NOT LAODED")
+                break  # Prevents continuous loop if more content was not loaded for some reason
+            for i in range(start_loop_from_index, products_count):
+                global_index = i
+                product = products_locator.nth(i)
 
-            # If the last element is on offer and is recent, send Sentry alert
-            # TODO: Should just 'load more' automatically
-            if index == len(products) - 1:
-                await self.send_sentry_message(
-                    message="Last element is recent and on offer",
-                    level="warning",
-                    data={
-                        "town_name": town_name,
-                        "is_offered": "True" if is_offered else "False",
-                        "time_ago": time_ago,
-                        "array_index": index,
-                    },
+                # Is product on offer?
+                is_offered_locator = product.locator(".text-offer")
+                if await is_offered_locator.count() == 0:
+                    continue
+
+                # Is it a recent product?
+                time_ago_span = product.locator(
+                    "span.post-list-item-date.text-lighten-less"
+                )
+                time_ago = await time_ago_span.inner_text()
+                if not "minutes" in time_ago:
+                    all_found = True
+                    break
+
+                # Do we have this product in db?
+                try:
+                    product_id = await product.get_attribute("data-id")
+                    await sync_to_async(core_models.NotifiedProduct.objects.get)(
+                        external_id=product_id
+                    )
+                    continue
+                except core_models.NotifiedProduct.DoesNotExist:
+                    pass
+
+                # Get product name and description
+                name_description_parent_div = product.locator(
+                    ".post-list-item-content-description.hide-for-small-only"
+                )
+                link_element = name_description_parent_div.locator("h4 > a")
+                product_name = await link_element.inner_text()
+
+                description_element = name_description_parent_div.locator("p")
+                description = None
+                if await description_element.count() > 0:
+                    description = await description_element.inner_text()
+
+                # Get product image
+                product_img_div = product.locator("img[data-src]")
+                product_img_url = None
+                if await product_img_div.count() > 0:
+                    product_img_url = await product_img_div.get_attribute("data-src")
+
+                # Get product sublocation
+                sublocation_div = product.locator(
+                    ".post-list-item-header-icon.location-icon"
+                )
+                sublocation_span = sublocation_div.locator("span")
+                sublocation = None
+                if await sublocation_span.count() > 0:
+                    sublocation = await sublocation_span.inner_text()
+
+                print(f"Adding new Product: {product_name}")
+                products_to_create.append(
+                    core_models.NotifiedProduct(
+                        product_name=product_name,
+                        external_id=product_id,
+                        description=description,
+                        location=town_name,
+                        sublocation=sublocation,
+                        img=product_img_url,
+                    )
                 )
 
-            # Do we have this product in db?
-            try:
-                product_id = await product.get_attribute("data-id")
-                await sync_to_async(core_models.NotifiedProduct.objects.get)(
-                    external_id=product_id
-                )
-                continue
-            except core_models.NotifiedProduct.DoesNotExist:
-                pass
+                # If the last element is on offer and is recent, load more items
+                if i == products_count - 1:
+                    load_more_btn = page.locator("#item-list-load-more .btn-action")
 
-            # Get product name and description
-            name_description_parent_div = await product.query_selector(
-                ".post-list-item-content-description.hide-for-small-only"
-            )
-            link_element = await name_description_parent_div.query_selector("h4 > a")
-
-            product_name = await link_element.inner_text()
-
-            description_element = await name_description_parent_div.query_selector("p")
-            description = await (
-                description_element.inner_text() if description_element else ""
-            )
-
-            # Get product image
-            product_img_url = None
-            product_img_div = await product.query_selector("img[data-src]")
-            if product_img_div:
-                product_img_url = await product_img_div.get_attribute("data-src")
-
-            # Get product sublocation
-            sublocation = None
-            sublocation_div = await product.query_selector(
-                ".post-list-item-header-icon.location-icon"
-            )
-            if sublocation_div:
-                sublocation_span = await sublocation_div.query_selector("span")
-                sublocation = (
-                    await sublocation_span.inner_text() if sublocation_span else ""
-                )
-
-            print(f"Adding new Product: {product_name}")
-            products_to_create.append(
-                core_models.NotifiedProduct(
-                    product_name=product_name,
-                    external_id=product_id,
-                    description=description,
-                    location=town_name,
-                    sublocation=sublocation,
-                    img=product_img_url,
-                )
-            )
+                    await load_more_btn.click()
+                    await asyncio.sleep(1)
+                    print("LAODED MORE")
+                    # await self.send_sentry_message(
+                    #     message="Last element is recent and on offer",
+                    #     level="warning",
+                    #     data={
+                    #         "town_name": town_name,
+                    #         "is_offered": "True" if is_offered else "False",
+                    #         "time_ago": time_ago,
+                    #         "array_index": index,
+                    #     },
+                    # )
 
         if products_to_create:
             print(f"bulk creating {len(products_to_create)} products")
@@ -227,17 +251,21 @@ class Scraper:
         return f"https://www.freecycle.org/town/{town_ext}"
 
     async def _open_blank_browser_page(
-        self, playwright: Playwright, proxy: core_models.Proxy
+        self, playwright: Playwright, proxy: core_models.Proxy = None
     ) -> Tuple[Browser, Page]:
         try:
-            # Launch the browser and set context
-            browser = await playwright.chromium.launch(
-                proxy={
+            # Determine proxy settings based on provided proxy
+            proxy_settings = (
+                {
                     "server": f"http://{proxy.domain}:{proxy.port}",
                     "username": proxy.username,
                     "password": proxy.password,
                 }
+                if proxy is not None
+                else None
             )
+            # Launch the browser and set context
+            browser = await playwright.chromium.launch(proxy=proxy_settings)
             # Select a random user agent from the pool
             random_user_agent = random.choice(self.user_agents_pool)
             print("Selected user agent: ", random_user_agent)
@@ -255,6 +283,23 @@ class Scraper:
                 level="error",
             )
             raise OpenBlankPageError
+
+    async def accept_privacy_dialog_if_present(self, page: Page):
+        # Attempt to locate and accept the consent dialog
+        try:
+            # You may need to tailor the selector to match the actual buttons in the dialog
+            agree_button = page.locator(
+                'div.qc-cmp2-summary-buttons button:has-text("AGREE")'
+            )
+
+            if await agree_button.is_visible():
+                await agree_button.click()
+                print("Privacy dialog accepted.")
+            else:
+                print("Privacy dialog not present.")
+
+        except Exception as e:
+            print(f"Could not accept privacy dialog: {e}")
 
     async def _ensure_list_view(self, page: Page) -> bool:
         selector = "li.item-list-header-filter-icon.item-list-list-view.hover-state"
