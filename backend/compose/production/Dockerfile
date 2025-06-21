@@ -91,6 +91,8 @@ RUN chmod +x /start-celerybeat
 
 COPY --chown=django:django . ${APP_HOME}
 
+RUN touch ${APP_HOME}/playwright_debug.log
+
 # make django owner of the WORKDIR directory as well.
 RUN chown -R django:django ${APP_HOME}
 

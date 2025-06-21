@@ -14,7 +14,4 @@ wait-for-it "${POSTGRES_HOST}:${POSTGRES_PORT}" -t 30
 
 >&2 echo 'PostgreSQL is available'
 
-# Ensure all files under APP_HOME are owned by django
-chown -R django:django ${APP_HOME}
-
 exec "$@"

@@ -109,9 +109,12 @@ class Scraper:
                         await browser.close()
                         break  # Go to next town
                     except OpenBlankPageError:
-                        # TODO: Temp
-
-                        # browser_open_error
+                        # TODO: Temp setup until issue resolved
+                        await self.send_sentry_message(
+                            "Browser Open Error",
+                            "error",
+                            additional_tags={"browser_open_error": "true"},
+                        )
                         break  # Go to next town
                     except Exception as e:
                         print(f"❌ Fail - {e}")
@@ -336,6 +339,7 @@ class Scraper:
         message: str,
         level: Literal["fatal", "critical", "error", "warning", "info", "debug"],
         data: Optional[Dict[str, Any]] = None,
+        additional_tags: Optional[Dict[str, Any]] = None,
     ):
         print(f"Sending Sentry message with level '{level}': {message}")
         if ENV == "DEV":
@@ -344,6 +348,10 @@ class Scraper:
 
         with sentry_sdk.new_scope() as scope:
             scope.set_tag("module", "scraper")
+            # Set additional tags if provided
+            if additional_tags:
+                for key, value in additional_tags.items():
+                    scope.set_tag(key, value)
             if data:
                 scope.set_context("town_product_details", data)
             sentry_sdk.capture_message(message, level)
