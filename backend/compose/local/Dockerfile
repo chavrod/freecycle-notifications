@@ -20,6 +20,7 @@ COPY ./requirements.txt .
 RUN pip wheel --wheel-dir /usr/src/app/wheels  \
   -r requirements.txt
 
+
 # Python 'run' stage
 FROM python AS python-run-stage
 
@@ -61,9 +62,11 @@ COPY --from=python-build-stage /usr/src/app/wheels  /wheels/
 RUN pip install --no-cache-dir --no-index --find-links=/wheels/ /wheels/* \
   && rm -rf /wheels/
 
-# Install Playwright browsers and deps
+# Install Playwright browsers
 RUN --mount=type=cache,target=/var/cache/playwright,sharing=locked,id=playwright \
   playwright install
+# Install Playwright system dependencies
+RUN playwright install-deps chromium
 
 COPY ./compose/production/entrypoint /entrypoint
 RUN sed -i 's/\r$//g' /entrypoint
