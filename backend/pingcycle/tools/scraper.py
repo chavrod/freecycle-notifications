@@ -67,7 +67,8 @@ class Scraper:
     async def run_main(self, with_proxy=True):
         if DEBUG_PLAYWRIGHT_LOGS:
             os.environ["DEBUG"] = "pw:api"
-            os.environ["DEBUG_FILE"] = "/etc/playwright_debug.log"
+            app_home = os.environ["APP_HOME"]
+            os.environ["DEBUG_FILE"] = f"{app_home}/playwright_debug.log"
 
         print("Started Running Scraper")
         self.start_time = datetime.now()
@@ -109,6 +110,8 @@ class Scraper:
                         break  # Go to next town
                     except OpenBlankPageError:
                         # TODO: Temp
+
+                        # browser_open_error
                         break  # Go to next town
                     except Exception as e:
                         print(f"❌ Fail - {e}")
