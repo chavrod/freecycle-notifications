@@ -59,6 +59,10 @@ services:
       - postgres
     ports: []
     command: /start-celeryworker
+    volumes:
+      - /etc/pingcycle_config.json:/etc/pingcycle_config.json
+      - /etc/scraper_proxies.txt:/etc/scraper_proxies.txt
+      - ${HOST_PATH}/playwright_debug.log:/etc/playwright_debug.log
     networks:
       - pingcycle_net
 

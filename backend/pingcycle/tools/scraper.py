@@ -1,5 +1,6 @@
-from datetime import datetime
+import os
 import asyncio
+from datetime import datetime
 from typing import Tuple, Dict, Optional, Literal, Any
 from asgiref.sync import sync_to_async
 import random
@@ -8,8 +9,8 @@ import traceback
 import sentry_sdk
 from playwright.async_api import async_playwright, Page, Playwright, Browser
 
+from config.settings import ENV, DEBUG_PLAYWRIGHT_LOGS
 import pingcycle.apps.core.models as core_models
-from config.settings import ENV
 
 # TODO: Temporary solution
 TOWN_NAME_URL_EXT = [
@@ -64,6 +65,10 @@ class Scraper:
         ]
 
     async def run_main(self, with_proxy=True):
+        if DEBUG_PLAYWRIGHT_LOGS:
+            os.environ["DEBUG"] = "pw:api"
+            os.environ["DEBUG_FILE"] = "/etc/playwright_debug.log"
+
         print("Started Running Scraper")
         self.start_time = datetime.now()
 
@@ -103,7 +108,8 @@ class Scraper:
                         await browser.close()
                         break  # Go to next town
                     except OpenBlankPageError:
-                        pass  # Try again
+                        # TODO: Temp
+                        break  # Go to next town
                     except Exception as e:
                         print(f"❌ Fail - {e}")
                         traceback.print_exc()

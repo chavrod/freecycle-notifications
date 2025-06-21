@@ -265,6 +265,11 @@ CHAT_TEMP_UUID_MAX_VALID_SECONDS = 20
 MAX_RETRIES_PER_MESSAGE = 3
 MAX_RETRIES_PER_PROXY = 10
 
+##################
+# Business Logic #
+##################
+DEBUG_PLAYWRIGHT_LOGS = CONFIG.get("DEBUG_PLAYWRIGHT_LOGS", False)
+
 
 if ENV != "DEV":
     sentry_sdk.init(
