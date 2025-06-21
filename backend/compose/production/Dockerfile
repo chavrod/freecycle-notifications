@@ -24,7 +24,7 @@ RUN pip wheel --wheel-dir /usr/src/app/wheels  \
 FROM python AS python-run-stage
 
 ARG BUILD_ENVIRONMENT=production
-ARG APP_HOME=/app
+ARG APP_HOME
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1

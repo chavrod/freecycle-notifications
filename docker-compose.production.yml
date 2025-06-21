@@ -3,6 +3,8 @@ services:
     build:
       context: ./backend
       dockerfile: ./compose/production/Dockerfile
+      args:
+        APP_HOME: ${APP_HOME}
     image: pingcycle_prod_django
     container_name: pingcycle_prod_django
     depends_on:
@@ -62,7 +64,7 @@ services:
     volumes:
       - /etc/pingcycle_config.json:/etc/pingcycle_config.json
       - /etc/scraper_proxies.txt:/etc/scraper_proxies.txt
-      - ${HOST_PATH}/playwright_debug.log:/etc/playwright_debug.log
+      - ${HOST_PATH}/playwright_debug.log:${APP_HOME}/playwright_debug.log
     networks:
       - pingcycle_net
 
