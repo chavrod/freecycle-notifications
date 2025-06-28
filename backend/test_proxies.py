@@ -154,14 +154,14 @@ async def try_go(should_succeed, proxy=None):
 
 if __name__ == "__main__":
     try:
-        # proxies = load_proxies_from_file("scraper_proxies.txt")
-        # proxy = get_proxy_by_port(proxies, 10056)
-        # assert proxy is not None
+        proxies = load_proxies_from_file("scraper_proxies.txt")
+        proxy = get_proxy_by_port(proxies, 6069)
+        assert proxy is not None
 
-        proxy = None
+        # proxy = None
 
         # asyncio.run(check_ip(proxy))
-        for i, should_succeed in enumerate([True, False, True]):
+        for i, should_succeed in enumerate([True]):
             print("RUN #: ", i + 1)
             asyncio.run(try_go(should_succeed, proxy))
     except Exception as e:
