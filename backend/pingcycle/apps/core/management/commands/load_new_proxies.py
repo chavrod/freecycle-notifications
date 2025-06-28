@@ -16,10 +16,25 @@ class Command(BaseCommand):
             default="/etc/scraper_proxies.txt",
             help="Specify non-default path to proxy",
         )
+        parser.add_argument(
+            "--delete-existing",
+            action="store_true",
+            dest="delete_existing",
+            default=False,
+            help="Delete existing proxies before loading new ones",
+        )
 
     def handle(self, *args, **options):
         try:
             self.stdout.write("Begin loading proxies")
+
+            # Check if we need to delete existing proxies
+            if options["delete_existing"]:
+                self.stdout.write("Deleting existing proxies")
+                deleted_count, _ = core_models.Proxy.objects.all().delete()
+                self.stdout.write(
+                    self.style.SUCCESS(f"Deleted {deleted_count} existing proxies")
+                )
 
             path = options["path"]
             self.stdout.write(f"Loading proxies from path: {path}")
