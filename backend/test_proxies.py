@@ -1,9 +1,14 @@
 import os
 import asyncio
 import traceback
+import random
 
 from playwright.async_api import async_playwright, Page, Playwright, Browser
 from playwright.sync_api import sync_playwright
+
+
+class OpenBlankPageError(Exception):
+    pass
 
 
 def load_proxies_from_file(relative_path: str):
@@ -59,15 +64,19 @@ async def check_ip(test_proxy):
         await browser.close()
 
 
-async def _open_blank_browser_page(playwright: Playwright, proxy_config: dict):
+async def _open_blank_browser_page(playwright: Playwright, proxy: dict = None):
     # Launch the browser and set context
-    # browser = await playwright.chromium.launch()
+    proxy_settings = (
+        {
+            "server": proxy["server"],
+            "username": proxy["username"],
+            "password": proxy["password"],
+        }
+        if proxy is not None
+        else None
+    )
     browser = await playwright.chromium.launch(
-        proxy={
-            "server": proxy_config["server"],
-            "username": proxy_config["username"],
-            "password": proxy_config["password"],
-        },
+        proxy=proxy_settings,
     )
     context = await browser.new_context(
         user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/133.0.6943.16 Safari/537.36",
@@ -80,13 +89,81 @@ async def _open_blank_browser_page(playwright: Playwright, proxy_config: dict):
     return browser, page
 
 
+async def _ensure_list_view(page: Page) -> bool:
+    selector = "li.item-list-header-filter-icon.item-list-list-view.hover-state"
+
+    # Find the element
+    element = await page.query_selector(selector)
+
+    if element is not None:
+        # Check if 'inactive' class is present
+        class_attribute = await element.get_attribute("class")
+
+        if "inactive" in class_attribute:
+            # Click the element to toggle inactive class
+            await element.click()
+
+        print("List view is active.")
+    else:
+        raise Exception("Unable to open list view.")
+
+
+async def try_go(should_succeed, proxy=None):
+    async with async_playwright() as p:
+        browser = None
+        try:
+            print("Opening Browser")
+            browser, page = await _open_blank_browser_page(p, proxy)
+
+            print("Going to page")
+            if not should_succeed:
+                raise OpenBlankPageError
+            await page.goto("https://www.freecycle.org/town/DublinIE")
+            await page.content()
+
+            await _ensure_list_view(page)
+
+            products_locator = page.locator("#fc-data div[data-id]")
+
+            products_count = await products_locator.count()
+            print("products_count: ", products_count)
+
+            product = products_locator.nth(0)
+            name_description_parent_div = product.locator(
+                ".post-list-item-content-description.hide-for-small-only"
+            )
+            link_element = name_description_parent_div.locator("h4 > a")
+            product_name = await link_element.inner_text()
+            print("Top product: ", product_name)
+
+            print(f"✅ Success")
+        except OpenBlankPageError:
+            # Set debug environment variables
+            print("OpenBlankPageError encountered. Enabling debug mode.")
+            os.environ["DEBUG"] = "pw:api"
+            os.environ["DEBUG_FILE"] = (
+                f"/Users/dmitry/projects/freecycle-notifications/backend/playwright_debug.log"
+            )
+        except Exception as e:
+            if browser:
+                browser.close()
+            raise e
+
+        await asyncio.sleep(random.randint(2, 10))
+
+
 if __name__ == "__main__":
     try:
-        proxies = load_proxies_from_file("scraper_proxies.txt")
-        proxy = get_proxy_by_port(proxies, 10088)
-        assert proxy is not None
+        # proxies = load_proxies_from_file("scraper_proxies.txt")
+        # proxy = get_proxy_by_port(proxies, 10056)
+        # assert proxy is not None
 
-        asyncio.run(check_ip(proxy))
+        proxy = None
+
+        # asyncio.run(check_ip(proxy))
+        for i, should_succeed in enumerate([True, False, True]):
+            print("RUN #: ", i + 1)
+            asyncio.run(try_go(should_succeed, proxy))
     except Exception as e:
         print("Error: ", e)
         traceback.print_exc()
