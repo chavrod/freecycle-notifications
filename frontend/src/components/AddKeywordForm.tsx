@@ -1,4 +1,4 @@
-import { Text, Button, TextInput } from "@mantine/core";
+import { Text, Button, TextInput, Box } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconBellPlus } from "@tabler/icons-react";
@@ -37,31 +37,32 @@ export default function AddKeywordForm({
       onSuccess(addKeywrodRes.keyword);
     },
   });
-
   return (
-    <form onSubmit={form.onSubmit(handleSubmit)} style={{ width: "100%" }}>
-      <TextInput
-        {...form.getInputProps("name")}
-        size="md"
-        description="Be specific. e.g. instead of 'furniture', use 'chair'"
-        placeholder="Enter a new keyword"
-        mb="sm"
-      />
-      {nonFieldErrors && (
-        <Text size="sm" c="red" my="md">
-          {nonFieldErrors}
-        </Text>
-      )}
-      <Button
-        type="submit"
-        fullWidth
-        loading={loading}
-        w={{ base: "100%", xs: 400 }}
-        leftSection={<IconBellPlus />}
-        disabled={submitButtonDisabled}
-      >
-        Add Keyword
-      </Button>
-    </form>
+    <Box w={{ base: "100%", xs: 400 }}>
+      <form onSubmit={form.onSubmit(handleSubmit)} style={{ width: "100%" }}>
+        <TextInput
+          {...form.getInputProps("name")}
+          size="md"
+          description="Be specific. e.g. instead of 'furniture', use 'chair'"
+          placeholder="Enter a new keyword"
+          mb="sm"
+        />
+        {nonFieldErrors && (
+          <Text size="sm" c="red" my="md">
+            {nonFieldErrors}
+          </Text>
+        )}
+        <Button
+          type="submit"
+          fullWidth
+          loading={loading}
+          w={{ base: "100%", xs: 400 }}
+          leftSection={<IconBellPlus />}
+          disabled={submitButtonDisabled}
+        >
+          Add Keyword
+        </Button>
+      </form>
+    </Box>
   );
 }
