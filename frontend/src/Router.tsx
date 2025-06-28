@@ -26,6 +26,7 @@ import Home from "./Home";
 import { useConfig } from "./auth/hooks";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ManageChats from "./settings/ManageChats";
+import ManageAccount from "./settings/ManageAccount";
 
 function createRouter() {
   return createBrowserRouter([
@@ -47,6 +48,14 @@ function createRouter() {
           element: (
             <AuthenticatedRoute>
               <ManageChats />
+            </AuthenticatedRoute>
+          ),
+        },
+        {
+          path: "manage-account",
+          element: (
+            <AuthenticatedRoute>
+              <ManageAccount />
             </AuthenticatedRoute>
           ),
         },

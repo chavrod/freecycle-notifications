@@ -70,7 +70,9 @@ class Keyword(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="keywords",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
     created = models.DateTimeField(auto_now_add=True)
 

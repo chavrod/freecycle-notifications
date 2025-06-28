@@ -20,6 +20,8 @@ const chatsGetBySessionUuid = (uuid: string) =>
 const chatsToggleState = (id: string) =>
   coreApiClient.post(`chats/${id}/toggle_state/`);
 
+const accountDelete = () => coreApiClient.post(`users/delete-account/`);
+
 const coreApi = {
   keywordsList,
   keywordsCreate,
@@ -29,6 +31,7 @@ const coreApi = {
   chatsDestroy,
   chatsGetBySessionUuid,
   chatsToggleState,
+  accountDelete,
 };
 
 export default coreApi;

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Menu, Button } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useLocation, Link, Outlet } from "react-router-dom";
-import { IconLogout, IconSettings } from "@tabler/icons-react";
+import { IconLogout, IconSettings, IconUser } from "@tabler/icons-react";
 
 import { useUser } from "./auth/hooks";
 import { logout } from "./auth/api";
@@ -62,6 +62,11 @@ export default function Root() {
 
           <Menu.Dropdown>
             <Menu.Label>{user?.email}</Menu.Label>
+            <Link to="/manage-account" style={{ textDecoration: "none" }}>
+              <Menu.Item leftSection={<IconUser size={14} />}>
+                Manage Account
+              </Menu.Item>
+            </Link>
             <Link to="/manage-chats" style={{ textDecoration: "none" }}>
               <Menu.Item leftSection={<IconSettings size={14} />}>
                 Manage Chats
