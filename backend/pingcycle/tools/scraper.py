@@ -65,11 +65,6 @@ class Scraper:
         ]
 
     async def run_main(self, with_proxy=True):
-        if DEBUG_PLAYWRIGHT_LOGS:
-            os.environ["DEBUG"] = "pw:api"
-            app_home = os.environ["APP_HOME"]
-            os.environ["DEBUG_FILE"] = f"{app_home}/playwright_debug.log"
-
         print("Started Running Scraper")
         self.start_time = datetime.now()
 
@@ -115,6 +110,13 @@ class Scraper:
                             "error",
                             additional_tags={"browser_open_error": "true"},
                         )
+                        print("OpenBlankPageError encountered. Enabling debug mode.")
+                        if DEBUG_PLAYWRIGHT_LOGS:
+                            os.environ["DEBUG"] = "pw:api"
+                            app_home = os.environ["APP_HOME"]
+                            os.environ["DEBUG_FILE"] = (
+                                f"{app_home}/playwright_debug.log"
+                            )
                         break  # Go to next town
                     except Exception as e:
                         print(f"❌ Fail - {e}")
