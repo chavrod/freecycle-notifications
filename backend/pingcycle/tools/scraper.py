@@ -112,7 +112,7 @@ class Scraper:
                         )
                         print("OpenBlankPageError encountered. Enabling debug mode.")
                         if DEBUG_PLAYWRIGHT_LOGS:
-                            os.environ["DEBUG"] = "pw:api"
+                            os.environ["DEBUG"] = "pw:browser,pw:api"
                             app_home = os.environ["APP_HOME"]
                             os.environ["DEBUG_FILE"] = (
                                 f"{app_home}/playwright_debug.log"
@@ -279,9 +279,10 @@ class Scraper:
                 else None
             )
             # Launch the browser and set context
-            browser = await playwright.chromium.launch(
-                proxy=proxy_settings, headless=True, args=["--disable-gpu"]
-            )
+            browser = await playwright.chromium.launch(proxy=proxy_settings)
+            # TODO: temp disable
+            # headless=True, args=["--disable-gpu"]
+
             # Select a random user agent from the pool
             random_user_agent = random.choice(self.user_agents_pool)
             print("Selected user agent: ", random_user_agent)
