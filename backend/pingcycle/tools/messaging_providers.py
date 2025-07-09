@@ -201,6 +201,14 @@ class Telegram(MessagingProvider):
         if status_code == 200:
             return {"is_ok": True, "time_sent": time.time(), "msg": res.json()}
         else:
+            try:
+                res_json = res.json()
+                res_text = res_json.get("description")
+            except Exception:
+                res_text = res.text
+            if not res_text:
+                res_text = "Unknown error"
+
             if ENV != "DEV":
                 with sentry_sdk.new_scope() as scope:
                     scope.set_tag("module", "messaging_providers")
@@ -217,18 +225,15 @@ class Telegram(MessagingProvider):
                     )
                     scope.set_context(
                         "telegram_response",
-                        {"status_code": status_code, "error_message": res.text},
+                        {"status_code": status_code, "error_message": res_text},
                     )
 
                     sentry_sdk.capture_message(
-                        "Non-OK Response from Telegram", "warning"
+                        f"TELEGRAM {status_code}: {res_text}", "warning"
                     )
             return {
                 "is_ok": False,
-                "error_obj": {
-                    "error_res_code": status_code,
-                    "error_msg": res.text,
-                },
+                "error_obj": {"error_res_code": status_code, "error_msg": res_text},
             }
 
     def handle_webhook(self, request: requests.Request):
