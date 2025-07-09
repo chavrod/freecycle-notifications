@@ -279,7 +279,9 @@ class Scraper:
                 else None
             )
             # Launch the browser and set context
-            browser = await playwright.chromium.launch(proxy=proxy_settings)
+            browser = await playwright.chromium.launch(
+                proxy=proxy_settings, headless=True, args=["--disable-gpu"]
+            )
             # Select a random user agent from the pool
             random_user_agent = random.choice(self.user_agents_pool)
             print("Selected user agent: ", random_user_agent)
