@@ -55,6 +55,7 @@ services:
 
   celeryworker:
     <<: *django
+    image: pingcycle_backend
     container_name: pingcycle_prod_celeryworker
     depends_on:
       - redis
@@ -70,6 +71,7 @@ services:
 
   celerybeat:
     <<: *django
+    image: pingcycle_backend
     container_name: pingcycle_prod_celerybeat
     depends_on:
       - redis
