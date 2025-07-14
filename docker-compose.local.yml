@@ -5,6 +5,7 @@ services:
       dockerfile: ./compose/local/Dockerfile
     image: pingcycle_local_django
     container_name: pingcycle_local_django
+    init: true
     depends_on:
       - postgres
       - redis
